@@ -10,12 +10,20 @@ android {
         targetSdkVersion 23
         versionCode 1
         versionName "1.0"
+        multiDexEnabled true
     }
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
+    }
+
+    packagingOptions {
+        pickFirst 'META-INF/maven/org.bytedeco.javacpp-presets/ffmpeg/pom.xml'
+        pickFirst 'META-INF/maven/org.bytedeco.javacpp-presets/opencv/pom.xml'
+        pickFirst 'META-INF/maven/org.bytedeco.javacpp-presets/opencv/pom.properties'
+        pickFirst 'META-INF/maven/org.bytedeco.javacpp-presets/ffmpeg/pom.properties'
     }
 }
 
@@ -24,7 +32,7 @@ dependencies {
     testCompile 'junit:junit:4.12'
     compile 'com.android.support:appcompat-v7:23.1.1'
     compile 'com.android.support:support-v4:23.1.1'
-    compile 'org.bytedeco:javacv:+'
+    compile 'org.bytedeco:javacv:0.10'
     compile group: 'org.bytedeco.javacpp-presets', name: 'opencv', version:   '2.4.10–0.10', classifier: 'android-arm'
     compile group: 'org.bytedeco.javacpp-presets', name: 'ffmpeg', version:   '2.5.1–0.10', classifier: 'android-arm'
 }
