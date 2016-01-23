@@ -60,7 +60,7 @@ public class MainActivity extends AppCompatActivity {
     private ImageRecognition rec;
 
     private boolean takingPictures = true, init = true;
-    private String basePictureDir = null;
+    public static String basePictureDir = null;
 
     private static final int PICTURE_DELAY = 20000;
     private static final int IMAGE_CAPTURE_ID = 1;
