@@ -1,8 +1,8 @@
 package com.jhia.s16.pennapps.carey;
 
 import static org.bytedeco.javacpp.opencv_core.*;
-import static org.bytedeco.javacpp.opencv_face.*;
-import static org.bytedeco.javacpp.opencv_imgcodecs.*;
+import static org.bytedeco.javacpp.opencv_contrib.*;
+import static org.bytedeco.javacpp.opencv_highgui.*;
 
 import java.io.File;
 import java.nio.IntBuffer;
