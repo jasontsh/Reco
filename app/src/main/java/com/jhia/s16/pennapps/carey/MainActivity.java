@@ -30,9 +30,11 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Locale;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Semaphore;
 
 import static org.bytedeco.javacpp.opencv_core.*;
@@ -71,6 +73,8 @@ public class MainActivity extends AppCompatActivity {
     private boolean imageFresh = false;
     private boolean forceImage = false;
 
+    private ConcurrentHashMap<String, Rect> faceMap = new ConcurrentHashMap<>();
+
 
     private final void savePicture(String fileName, Bitmap img) {
         try {
@@ -99,15 +103,10 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
         mCameraView.captureImage(directoryName + "/" + fileName + ".jpg");
-        //try {
-        //pictureFile.createNewFile();
-        //} catch (IOException ioException) {
-        //    ioException.printStackTrace();
-        //}
-        // Uri outputFileUri = Uri.fromFile(pictureFile);
-        // Intent cameraIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-        // cameraIntent.putExtra(MediaStore.EXTRA_OUTPUT, outputFileUri);
-        // startActivityForResult(cameraIntent, IMAGE_CAPTURE_ID);
+    }
+
+    public ConcurrentHashMap<String, Rect> getFaceMap() {
+        return faceMap;
     }
 
 
@@ -140,6 +139,7 @@ public class MainActivity extends AppCompatActivity {
         }
         mCamera.setDisplayOrientation(90);
         Camera.Size previewSize = mCamera.getParameters().getPreviewSize();
+        rec = new ImageRecognition(basePictureDir);
         previewCallback = new Camera.PreviewCallback() {
 
             long time = 0;
@@ -163,21 +163,35 @@ public class MainActivity extends AppCompatActivity {
                 Bitmap image = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length);
                 if (image == null) {
                     System.out.println("NULL IMAGE PREVIEW");
-                } else if (System.currentTimeMillis() - time > PICTURE_DELAY) {
-                    savePicture("random", image);
-                }
-                try {
-                    semaphore.acquire();
-                } catch (InterruptedException e) {
+                } else {
+                    if (System.currentTimeMillis() - time > PICTURE_DELAY) {
+                        savePicture("random", image);
+                    }
 
+                    try {
+                        semaphore.acquire();
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                    if (++counter > 50 || forceImage) {
+                        counter = 0;
+                        mostRecentImage = image;
+                        imageFresh = true;
+                        forceImage = false;
+
+                        // savePicture("random", image);
+                        // rec.findPersonFromPhoto(basePictureDir + "/random.png");
+                        faceMap.clear();
+                        ArrayList<Rect> faceBoxes = facepos(image);
+                        for (Rect face : faceBoxes) {
+                            Bitmap cropped = Bitmap.createBitmap(image, face.left, face.top, face.width(), face.height());
+                            savePicture("faceread", image);
+                            String name = rec.findPersonFromPhoto(basePictureDir + "/faceread.png");
+                            faceMap.put(name, face);
+                        }
+                    }
+                    semaphore.release();
                 }
-                if (++counter > 300 || forceImage) {
-                    counter = 0;
-                    mostRecentImage = image;
-                    imageFresh = true;
-                    forceImage = false;
-                }
-                semaphore.release();
             }
         };
         CameraHandler handler = new CameraHandler();
@@ -193,8 +207,6 @@ public class MainActivity extends AppCompatActivity {
                 toggle();
             }
         });
-
-        rec = new ImageRecognition(basePictureDir);
     }
 
     public Bitmap getMostRecentImage() {
