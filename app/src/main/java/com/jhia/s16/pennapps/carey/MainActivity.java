@@ -1,12 +1,21 @@
 package com.jhia.s16.pennapps.carey;
 
 import android.annotation.SuppressLint;
+import android.content.Intent;
+import android.speech.RecognizerIntent;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.os.Handler;
+import android.util.Log;
+import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import java.util.ArrayList;
+import java.util.Locale;
 
 /**
  * An example full-screen activity that shows and hides the system UI (i.e.
@@ -32,6 +41,8 @@ public class MainActivity extends AppCompatActivity {
     private static final int UI_ANIMATION_DELAY = 300;
     private final Handler mHideHandler = new Handler();
     private View mContentView;
+    protected static final int REQUEST_OK = 100;
+
     private final Runnable mHidePart2Runnable = new Runnable() {
         @SuppressLint("InlinedApi")
         @Override
@@ -124,6 +135,14 @@ public class MainActivity extends AppCompatActivity {
         } else {
             show();
         }
+        Intent i = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+        i.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+        i.putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault());
+        try {
+            startActivityForResult(i, REQUEST_OK);
+        } catch (Exception e) {
+            Toast.makeText(this, "ERROR", Toast.LENGTH_SHORT).show();
+        }
     }
 
     private void hide() {
@@ -159,5 +178,22 @@ public class MainActivity extends AppCompatActivity {
     private void delayedHide(int delayMillis) {
         mHideHandler.removeCallbacks(mHideRunnable);
         mHideHandler.postDelayed(mHideRunnable, delayMillis);
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        Log.d("WTF", "I'm here " + requestCode + " " + resultCode + (data == null));
+        if (data != null) {
+            final ArrayList<String> result = data.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
+            //Here is the result.
+//            runOnUiThread(new Runnable() {
+//                @Override
+//                public void run() {
+//                    TextView tv = (TextView) findViewById(R.id.fullscreen_content);
+//                    tv.setText(result.get(0));
+//                }
+//            });
+        }
     }
 }
