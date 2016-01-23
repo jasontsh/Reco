@@ -100,7 +100,7 @@ public class MainActivity extends AppCompatActivity {
         }
         mCameraView.captureImage(directoryName + "/" + fileName + ".jpg");
         //try {
-            //pictureFile.createNewFile();
+        //pictureFile.createNewFile();
         //} catch (IOException ioException) {
         //    ioException.printStackTrace();
         //}
@@ -124,13 +124,11 @@ public class MainActivity extends AppCompatActivity {
 
         setContentView(R.layout.activity_main);
 
-        if (ContextCompat.checkSelfPermission(mActivity,
-                Manifest.permission.CAMERA)
-                != PackageManager.PERMISSION_GRANTED) {
+        if (ContextCompat.checkSelfPermission(mActivity, Manifest.permission.CAMERA) !=
+                PackageManager.PERMISSION_GRANTED) {
 
-            ActivityCompat.requestPermissions(mActivity,
-                    new String[]{Manifest.permission.CAMERA},
-                    2);
+            ActivityCompat
+                    .requestPermissions(mActivity, new String[]{Manifest.permission.CAMERA}, 2);
         }
         mCamera = CameraView.getCameraInstance();
         if (mCamera == null) {
@@ -241,32 +239,65 @@ public class MainActivity extends AppCompatActivity {
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
 
+        final int voiceAcceptanceThreshold = 4;
+
         if (data != null && resultCode == -1) {
             final ArrayList<String> result =
                     data.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
-            Log.d("MainActivity", result.get(0));
-            String command = rec.reparse(result.get(0));
-            String[] words = command.split(" ");
-            if (words[0].equals("reco")) {
-                switch (words[1]) {
-                    case "person":
-                        addPerson(words[2]);
-                        break;
-                    case "change":
-                        change(command.substring(12));
-                        break;
-                    case "delete":
-                        delete(command.substring(12));
-                        break;
-                    case "note":
-                        note(command.substring(10));
-                        break;
+
+            CommandCondition commandCondition = new CommandCondition(2) {
+                @Override
+                public boolean isCommandSatisfied() {
+                    String[] cmd = getCommands();
+                    if (cmd != null) {
+                        for (int i = 0; i < cmd.length; ++i) {
+                            if (cmd[i] == null || cmd[i].length() == 0) {
+                                return false;
+                            }
+                        }
+                        return true;
+                    }
+                    return false;
+                }
+            };
+
+            if (result != null) {
+                int commandsFound = 0;
+                for (int i = 0; i < Math.min(voiceAcceptanceThreshold, result.size()) &&
+                        !commandCondition.isCommandSatisfied(); ++i) {
+                    String resulti = result.get(i);
+                    Log.d("MainActivity", resulti);
+                    String command = rec.reparse(resulti);
+                    String[] words = command.split("\\s");
+
+                    if (words[0].equals("reco")) {
+                        commandCondition.setCommand(0, "reco");
+                    }
+
+                    switch (words[1]) {
+                        case "person":
+                            addPerson(words[2]);
+                            commandCondition.setCommand(1, "person");
+                            break;
+                        case "change":
+                            change(command.substring(12));
+                            commandCondition.setCommand(1, "change");
+                            break;
+                        case "delete":
+                            delete(command.substring(12));
+                            commandCondition.setCommand(1, "delete");
+                            break;
+                        case "note":
+                            note(command.substring(10));
+                            commandCondition.setCommand(1, "note");
+                            break;
+                    }
                 }
             }
         }
     }
 
-    public void addPerson(String name){
+    public void addPerson(String name) {
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mActivity);
         int nextId = sp.getInt("people_count", 0) + 1;
         savePicture(nextId + "-" + name + "1.png", getMostRecentImage());
@@ -289,7 +320,7 @@ public class MainActivity extends AppCompatActivity {
                 notes = new ArrayList<>(sp.getStringSet(person, new HashSet<String>()));
             }
             int index = parseNumber(note.split(" ")[0]) - 1;
-            if (index < notes.size() && index >= 0){
+            if (index < notes.size() && index >= 0) {
                 notes.set(index, note);
                 sp.edit().putStringSet(person, new HashSet<>(notes)).apply();
             }
@@ -321,7 +352,7 @@ public class MainActivity extends AppCompatActivity {
                 notes = new ArrayList<>(sp.getStringSet(person, new HashSet<String>()));
             }
             int index = parseNumber(note.split(" ")[0]) - 1;
-            if (index < notes.size() && index >= 0){
+            if (index < notes.size() && index >= 0) {
                 notes.remove(index);
                 sp.edit().putStringSet(person, new HashSet<>(notes)).apply();
             }
@@ -332,22 +363,15 @@ public class MainActivity extends AppCompatActivity {
         IplImage image = IplImage.create(bm.getWidth(), bm.getHeight(), IPL_DEPTH_8U, 4);
         bm.copyPixelsToBuffer(image.getByteBuffer());
         ArrayList<Rect> answer = new ArrayList<>();
-        CvHaarClassifierCascade cascade = new
-                CvHaarClassifierCascade();
+        CvHaarClassifierCascade cascade = new CvHaarClassifierCascade();
         CvMemStorage storage = CvMemStorage.create();
-        CvSeq sign = cvHaarDetectObjects(
-                image,
-                cascade,
-                storage,
-                1.5,
-                3,
-                CV_HAAR_DO_CANNY_PRUNING);
+        CvSeq sign = cvHaarDetectObjects(image, cascade, storage, 1.5, 3, CV_HAAR_DO_CANNY_PRUNING);
 
         cvClearMemStorage(storage);
 
         int total_Faces = sign.total();
 
-        for(int i = 0; i < total_Faces; i++){
+        for (int i = 0; i < total_Faces; i++) {
             CvRect r = new CvRect(cvGetSeqElem(sign, i));
             answer.add(new Rect(r.x(), r.y(), r.width() + r.x(), r.y() + r.height()));
         }
@@ -356,21 +380,32 @@ public class MainActivity extends AppCompatActivity {
 
     /**
      * Parse a string s, such as "five", into 5.  1 <= x <= 10 Default return -1
+     *
      * @param s
      * @return
      */
     private int parseNumber(String s) {
-        switch(s.toLowerCase()){
-            case "one": return 1;
-            case "two": return 2;
-            case "three": return 3;
-            case "four": return 4;
-            case "five": return 5;
-            case "six": return 6;
-            case "seven": return 7;
-            case "eight": return 8;
-            case "nine": return 9;
-            case "ten": return 10;
+        switch (s.toLowerCase()) {
+            case "one":
+                return 1;
+            case "two":
+                return 2;
+            case "three":
+                return 3;
+            case "four":
+                return 4;
+            case "five":
+                return 5;
+            case "six":
+                return 6;
+            case "seven":
+                return 7;
+            case "eight":
+                return 8;
+            case "nine":
+                return 9;
+            case "ten":
+                return 10;
         }
         return -1;
     }
