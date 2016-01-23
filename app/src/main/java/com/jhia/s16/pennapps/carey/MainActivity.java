@@ -21,7 +21,6 @@ import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
-import android.view.Window;
 import android.widget.FrameLayout;
 import android.widget.Toast;
 
@@ -70,6 +69,7 @@ public class MainActivity extends AppCompatActivity {
 
     private Bitmap mostRecentImage = null;
     private Semaphore semaphore = new Semaphore(1);
+    private Semaphore reclock = new Semaphore(1);
     private boolean imageFresh = false;
     private boolean forceImage = false;
 
@@ -93,22 +93,9 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
-    private final void takePicture(String fileName) {
-        String directoryName = basePictureDir;
-        File directory = new File(directoryName);
-        directory.mkdirs();
-        // File pictureFile = new File(directoryName + "/" + fileName + ".jpg");
-        if (mCameraView == null) {
-            System.out.println("ERROR mCameraView null");
-            return;
-        }
-        mCameraView.captureImage(directoryName + "/" + fileName + ".jpg");
-    }
-
     public ConcurrentHashMap<String, Rect> getFaceMap() {
         return faceMap;
     }
-
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -118,16 +105,20 @@ public class MainActivity extends AppCompatActivity {
                         .getAbsolutePath() + "/reco/";
         File dir = new File(basePictureDir);
         dir.mkdirs();
-        getWindow().requestFeature(Window.FEATURE_ACTION_BAR);
-        getActionBar().hide();
 
         setContentView(R.layout.activity_main);
 
         if (ContextCompat.checkSelfPermission(mActivity, Manifest.permission.CAMERA) !=
-                PackageManager.PERMISSION_GRANTED) {
+                PackageManager.PERMISSION_GRANTED ||
+                ContextCompat.checkSelfPermission(mActivity, Manifest.permission.READ_EXTERNAL_STORAGE) !=
+                        PackageManager.PERMISSION_GRANTED ||
+                ContextCompat.checkSelfPermission(mActivity, Manifest.permission.WRITE_EXTERNAL_STORAGE) !=
+                        PackageManager.PERMISSION_GRANTED) {
 
             ActivityCompat
-                    .requestPermissions(mActivity, new String[]{Manifest.permission.CAMERA}, 2);
+                    .requestPermissions(mActivity, new String[]{Manifest.permission.CAMERA,
+                            Manifest.permission.READ_EXTERNAL_STORAGE,
+                            Manifest.permission.WRITE_EXTERNAL_STORAGE}, 2);
         }
         mCamera = CameraView.getCameraInstance();
         if (mCamera == null) {
@@ -236,6 +227,24 @@ public class MainActivity extends AppCompatActivity {
         return imageFresh;
     }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
+        recInit();
+
+    }
+
+    private void recInit() {
+        try {
+            reclock.acquire();
+            rec.init();
+        } catch (InterruptedException e) {
+
+        } finally {
+            reclock.release();
+        }
+    }
+
     private void toggle() {
         Intent i = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
         i.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
@@ -318,7 +327,7 @@ public class MainActivity extends AppCompatActivity {
         editor.putInt("people_count", nextId).apply();
         person = name;
         notes = null;
-        rec.init();
+        recInit();
     }
 
     public void change(String note) {
