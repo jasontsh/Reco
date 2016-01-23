@@ -15,6 +15,7 @@ import android.view.View;
 import android.view.WindowManager;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 
 /**
@@ -60,6 +61,8 @@ public class CameraView extends SurfaceView implements SurfaceHolder.Callback, R
         }
         return camera;
     }
+
+
 
     @Override
     public void surfaceCreated(SurfaceHolder holder) {
@@ -112,5 +115,27 @@ public class CameraView extends SurfaceView implements SurfaceHolder.Callback, R
     @Override
     public void surfaceDestroyed(SurfaceHolder holder) {
         on = false;
+    }
+
+    public void captureImage(String fullImagePath) {
+        if (mCamera != null) {
+            mCamera.takePicture(null, null, jpegCallback(fullImagePath));
+        }
+    }
+
+    private Camera.PictureCallback jpegCallback(final String fullImagePath) {
+        return new Camera.PictureCallback() {
+            @Override
+            public void onPictureTaken(byte[] data, Camera camera) {
+                FileOutputStream fos;
+                try {
+                    fos = new FileOutputStream(fullImagePath);
+                    fos.write(data);
+                    fos.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        };
     }
 }
