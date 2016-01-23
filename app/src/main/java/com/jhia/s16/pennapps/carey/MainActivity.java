@@ -99,16 +99,22 @@ public class MainActivity extends AppCompatActivity {
         String directoryName = basePictureDir;
         File directory = new File(directoryName);
         directory.mkdirs();
-        File pictureFile = new File(directoryName + "/" + fileName + ".jpg");
-        try {
-            pictureFile.createNewFile();
-        } catch (IOException ioException) {
-            ioException.printStackTrace();
+        // File pictureFile = new File(directoryName + "/" + fileName + ".jpg");
+        if (!(sv instanceof CameraView)) {
+            System.out.println("ERROR not instanceof CameraView");
+            return;
         }
-        Uri outputFileUri = Uri.fromFile(pictureFile);
-        Intent cameraIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-        cameraIntent.putExtra(MediaStore.EXTRA_OUTPUT, outputFileUri);
-        startActivityForResult(cameraIntent, IMAGE_CAPTURE_ID);
+        CameraView cv = (CameraView) sv;
+        cv.captureImage(directoryName + "/" + fileName + ".jpg");
+        //try {
+            //pictureFile.createNewFile();
+        //} catch (IOException ioException) {
+        //    ioException.printStackTrace();
+        //}
+        // Uri outputFileUri = Uri.fromFile(pictureFile);
+        // Intent cameraIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+        // cameraIntent.putExtra(MediaStore.EXTRA_OUTPUT, outputFileUri);
+        // startActivityForResult(cameraIntent, IMAGE_CAPTURE_ID);
     }
 
 
