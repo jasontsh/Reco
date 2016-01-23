@@ -55,12 +55,11 @@ public class MainActivity extends AppCompatActivity {
     private final Handler mHideHandler = new Handler();
     protected static final int REQUEST_OK = 100;
 
-    private SurfaceView sv;
-
     private ImageRecognition rec;
 
     private boolean takingPictures = true, init = true;
     private String basePictureDir = null;
+    private int whoIsCurrent = 0;
 
     private static final int PICTURE_DELAY = 20000;
     private static final int IMAGE_CAPTURE_ID = 1;
@@ -395,8 +394,14 @@ public class MainActivity extends AppCompatActivity {
                         addPerson(words[2]);
                         break;
                     case "change":
+                        change(command.substring(12));
+                        break;
                     case "delete":
+                        delete(command.substring(12));
+                        break;
                     case "note":
+                        note(command.substring(10));
+                        break;
                 }
             }
         }
@@ -409,7 +414,8 @@ public class MainActivity extends AppCompatActivity {
         try {
             out = new FileOutputStream(nextId + "-" + name + "1.png");
             getMostRecentImage().compress(Bitmap.CompressFormat.PNG, 100, out);
-
+            out = new FileOutputStream(nextId + "-" + name + "2.png");
+            sudoGetMostRecentImage().compress(Bitmap.CompressFormat.PNG, 100, out);
         } catch (IOException e) {
             e.printStackTrace();
         } finally {
@@ -420,6 +426,24 @@ public class MainActivity extends AppCompatActivity {
             } catch (IOException e){
                 e.printStackTrace();
             }
+        }
+    }
+
+    public void change(String note) {
+        if (whoIsCurrent == 0) {
+            return;
+        }
+    }
+
+    public void note(String note) {
+        if (whoIsCurrent == 0) {
+            return;
+        }
+    }
+
+    public void delete(String note) {
+        if (whoIsCurrent == 0) {
+            return;
         }
     }
 }

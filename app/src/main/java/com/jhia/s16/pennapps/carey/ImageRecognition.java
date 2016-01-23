@@ -82,7 +82,9 @@ public class ImageRecognition {
     public String reparse(String input) {
         //split input
         String[] split = input.split(" ");
-
+        if (split.length < 3) {
+            return "";
+        }
         //reco
         if(split[0].equals("reco") || split[0].equals("reko") ||
                 split[0].equals("rico") || split[0].equals("riko")) {
