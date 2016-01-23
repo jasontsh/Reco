@@ -30,12 +30,17 @@ public class ImageRecognition {
         List<File> images = getListFiles(new File(dir));
         MatVector mv = new MatVector(images.size());
         Mat labels = new Mat(images.size(), 1, CV_32SC1);
+        boolean empty = true;
         if (labels != null && images.size() > 0) {
             IntBuffer buf = labels.getIntBuffer();
             int count = 0;
             for (File image : images) {
                 Mat img = imread(image.getAbsolutePath(), CV_LOAD_IMAGE_GRAYSCALE);
                 mv.put(count, img);
+                if(image.getName().contains("random.png")){
+                    continue;
+                }
+                empty = false;
                 int label = Integer.parseInt(image.getName().split("\\-")[0]);
                 if (!map.containsKey(label)) {
                     map.put(label, image.getName().split("\\-")[1]);
@@ -43,7 +48,9 @@ public class ImageRecognition {
                 buf.put(count, label);
                 count++;
             }
-            recognizer.train(mv, labels);
+            if (!empty) {
+                recognizer.train(mv, labels);
+            }
         }
     }
 
