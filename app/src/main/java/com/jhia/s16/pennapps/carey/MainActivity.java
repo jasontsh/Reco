@@ -4,6 +4,7 @@ import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -13,6 +14,7 @@ import android.graphics.YuvImage;
 import android.hardware.Camera;
 import android.net.Uri;
 import android.os.Environment;
+import android.preference.PreferenceManager;
 import android.provider.MediaStore;
 import android.speech.RecognizerIntent;
 import android.support.v4.app.ActivityCompat;
@@ -384,38 +386,40 @@ public class MainActivity extends AppCompatActivity {
         if (data != null && resultCode == -1) {
             final ArrayList<String> result =
                     data.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
-            Log.d("WTF", result.get(0));
-            String command = rec.findPersonFromPhoto(result.get(0));
+            Log.d("MainActivity", result.get(0));
+            String command = rec.reparse(result.get(0));
             String[] words = command.split(" ");
             if (words[0].equals("reco")) {
                 switch (words[1]) {
                     case "person":
+                        addPerson(words[2]);
+                        break;
                     case "change":
                     case "delete":
                     case "note":
                 }
             }
-            //Here is the result.
-//            runOnUiThread(new Runnable() {
-//                @Override
-//                public void run() {
-//                    TextView tv = (TextView) findViewById(R.id.fullscreen_content);
-//                    tv.setText(result.get(0));
-//                }
-//            });
         }
+    }
 
-        // Log.d("WTF", "I'm here " + requestCode + " " + resultCode + (data == null));
-        //if (data != null) {
-        //    final ArrayList<String> result = data.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
-        //Here is the result.
-        //            runOnUiThread(new Runnable() {
-        //                @Override
-        //                public void run() {
-        //                    TextView tv = (TextView) findViewById(R.id.fullscreen_content);
-        //                    tv.setText(result.get(0));
-        //                }
-        //            });
-        // }
+    public void addPerson(String name){
+        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mActivity);
+        int nextId = sp.getInt("people_count", 0) + 1;
+        FileOutputStream out = null;
+        try {
+            out = new FileOutputStream(nextId + "-" + name + "1.png");
+            getMostRecentImage().compress(Bitmap.CompressFormat.PNG, 100, out);
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                if (out != null) {
+                    out.close();
+                }
+            } catch (IOException e){
+                e.printStackTrace();
+            }
+        }
     }
 }

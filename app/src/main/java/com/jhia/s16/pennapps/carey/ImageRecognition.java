@@ -57,7 +57,7 @@ public class ImageRecognition {
             if (file.isDirectory()) {
                 inFiles.addAll(getListFiles(file));
             } else {
-                if(file.getName().endsWith(".jpg")){
+                if(file.getName().endsWith(".png")){
                     inFiles.add(file);
                 }
             }
