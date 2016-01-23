@@ -35,6 +35,7 @@ import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
 
 import static org.bytedeco.javacpp.opencv_core.*;
 import static org.bytedeco.javacpp.opencv_objdetect.*;
@@ -173,12 +174,21 @@ public class MainActivity extends AppCompatActivity {
                         // savePicture("random", image);
                         // rec.findPersonFromPhoto(basePictureDir + "/random.png");
                         faceMap.clear();
-                        ArrayList<Rect> faceBoxes = facepos(image);
-                        for (Rect face : faceBoxes) {
-                            Bitmap cropped = Bitmap.createBitmap(image, face.left, face.top, face.width(), face.height());
-                            savePicture("faceread", image);
-                            String name = rec.findPersonFromPhoto(basePictureDir + "/faceread.png");
-                            faceMap.put(name, face);
+                        try {
+                            if (reclock.tryAcquire(100, TimeUnit.MILLISECONDS)) {
+                                ArrayList<Rect> faceBoxes = facepos(image);
+                                for (Rect face : faceBoxes) {
+                                    Bitmap cropped = Bitmap.createBitmap(image, face.left, face.top, face
+                                            .width(), face.height());
+                                    savePicture("faceread", image);
+                                    String name = rec.findPersonFromPhoto(
+                                            basePictureDir + "/faceread.png");
+                                    faceMap.put(name, face);
+                                }
+                                reclock.release();
+                            }
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
                         }
                     }
                     semaphore.release();
@@ -289,6 +299,7 @@ public class MainActivity extends AppCompatActivity {
                     String resulti = result.get(i);
                     Log.d("MainActivity", resulti);
                     String command = rec.reparse(resulti);
+
                     String[] words = command.split("\\s");
 
                     if (words[0].equals("reco")) {
@@ -334,7 +345,13 @@ public class MainActivity extends AppCompatActivity {
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mActivity);
         if (person == null) {
             savePicture("temp.png", getMostRecentImage());
+            try {
+                reclock.acquire();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
             person = rec.findPersonFromPhoto(basePictureDir + "/temp.png");
+            reclock.release();
         }
         if (person != null) {
             if (notes == null) {
@@ -351,7 +368,13 @@ public class MainActivity extends AppCompatActivity {
     public void note(String note) {
         if (person == null) {
             savePicture("temp.png", getMostRecentImage());
+            try {
+                reclock.acquire();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
             person = rec.findPersonFromPhoto(basePictureDir + "/temp.png");
+            reclock.release();
         }
         if (person != null) {
             SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mActivity);
@@ -365,7 +388,13 @@ public class MainActivity extends AppCompatActivity {
     public void delete(String note) {
         if (person == null) {
             savePicture("temp.png", getMostRecentImage());
+            try {
+                reclock.acquire();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
             person = rec.findPersonFromPhoto(basePictureDir + "/temp.png");
+            reclock.release();
         }
         if (person != null) {
             SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mActivity);
