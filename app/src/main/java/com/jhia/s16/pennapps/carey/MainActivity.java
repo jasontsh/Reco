@@ -1,8 +1,10 @@
 package com.jhia.s16.pennapps.carey;
 
+import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.ImageFormat;
@@ -13,6 +15,8 @@ import android.net.Uri;
 import android.os.Environment;
 import android.provider.MediaStore;
 import android.speech.RecognizerIntent;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -74,7 +78,7 @@ public class MainActivity extends AppCompatActivity {
             // Note that some of these constants are new as of API 16 (Jelly Bean)
             // and API 19 (KitKat). It is safe to use them, as they are inlined
             // at compile-time and do nothing on earlier devices.
-            sv.setSystemUiVisibility(
+            mCameraView.setSystemUiVisibility(
                     View.SYSTEM_UI_FLAG_LOW_PROFILE | View.SYSTEM_UI_FLAG_FULLSCREEN |
                             View.SYSTEM_UI_FLAG_LAYOUT_STABLE |
                             View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY |
@@ -169,9 +173,42 @@ public class MainActivity extends AppCompatActivity {
 
         mVisible = true;
 
-        // HE patch
 
+        if (ContextCompat.checkSelfPermission(mActivity,
+                Manifest.permission.CAMERA)
+                != PackageManager.PERMISSION_GRANTED) {
+
+            // Should we show an explanation?
+            if (ActivityCompat.shouldShowRequestPermissionRationale(mActivity,
+                    Manifest.permission.CAMERA)) {
+
+                // Show an expanation to the user *asynchronously* -- don't block
+                // this thread waiting for the user's response! After the user
+                // sees the explanation, try again to request the permission.
+
+            } else {
+
+                // No explanation needed, we can request the permission.
+
+                ActivityCompat.requestPermissions(mActivity,
+                        new String[]{Manifest.permission.CAMERA},
+                        2);
+
+
+
+                // MY_PERMISSIONS_REQUEST_READ_CONTACTS is an
+                // app-defined int constant. The callback method gets the
+                // result of the request.
+            }
+        }
         mCamera = CameraView.getCameraInstance();
+        if (mCamera == null) {
+
+            mCamera = Camera.open(Camera.CameraInfo.CAMERA_FACING_FRONT);
+            if (mCamera == null) {
+                mCamera = Camera.open(Camera.CameraInfo.CAMERA_FACING_BACK);
+            }
+        }
         mCamera.setDisplayOrientation(90);
         Camera.Size previewSize = mCamera.getParameters().getPreviewSize();
         previewCallback = new Camera.PreviewCallback() {
@@ -240,6 +277,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         // cameraHandler.postDelayed(mTakePicturesOfPeople, PICTURE_DELAY);
+        hide();
     }
 
     private void toggle() {
@@ -275,7 +313,7 @@ public class MainActivity extends AppCompatActivity {
     @SuppressLint("InlinedApi")
     private void show() {
         // Show the system bar
-        sv.setSystemUiVisibility(
+        mCameraView.setSystemUiVisibility(
                 View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION);
         mVisible = true;
 
