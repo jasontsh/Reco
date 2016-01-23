@@ -29,9 +29,11 @@ import android.widget.Toast;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Locale;
+import java.util.logging.Filter;
 
 /**
  * An example full-screen activity that shows and hides the system UI (i.e.
@@ -115,6 +117,22 @@ public class MainActivity extends AppCompatActivity {
         }
     };
 
+    private final void savePicture(String fileName, Bitmap img) {
+        try {
+            String directoryName = basePictureDir;
+            File directory = new File(directoryName);
+            directory.mkdirs();
+            File imgFile = new File(directoryName + "/" + fileName + ".png");
+            imgFile.createNewFile();
+            FileOutputStream fout = new FileOutputStream(imgFile);
+            img.compress(Bitmap.CompressFormat.PNG, 85, fout);
+            fout.flush();
+            fout.close();
+        } catch (IOException io) {
+            io.printStackTrace();
+        }
+    }
+
 
     private final void takePicture(String fileName) {
         String directoryName = basePictureDir;
@@ -158,12 +176,17 @@ public class MainActivity extends AppCompatActivity {
         Camera.Size previewSize = mCamera.getParameters().getPreviewSize();
         previewCallback = new Camera.PreviewCallback() {
 
+            long time = 0;
+
             @Override
             public void onPreviewFrame(byte[] data, Camera camera) {
                 execute(data);
             }
 
             private void execute(byte[] data) {
+                if (time == 0) {
+                    time = System.currentTimeMillis();
+                }
                 Camera.Size previewSize = mCamera.getParameters().getPreviewSize();
                 ByteArrayOutputStream out = new ByteArrayOutputStream();
                 YuvImage yuvImg =
@@ -173,8 +196,8 @@ public class MainActivity extends AppCompatActivity {
                 Bitmap image = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length);
                 if (image == null) {
                     System.out.println("NULL IMAGE PREVIEW");
-                } else {
-                    // preview
+                } else if (System.currentTimeMillis() - time > PICTURE_DELAY) {
+                    savePicture("random", image);
                 }
             }
         };
@@ -216,7 +239,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        cameraHandler.postDelayed(mTakePicturesOfPeople, PICTURE_DELAY);
+        // cameraHandler.postDelayed(mTakePicturesOfPeople, PICTURE_DELAY);
     }
 
     private void toggle() {
