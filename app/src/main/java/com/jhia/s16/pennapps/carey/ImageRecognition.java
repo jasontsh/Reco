@@ -30,24 +30,29 @@ public class ImageRecognition {
         List<File> images = getListFiles(new File(dir));
         MatVector mv = new MatVector(images.size());
         Mat labels = new Mat(images.size(), 1, CV_32SC1);
-        IntBuffer buf = labels.getIntBuffer();
-        int count = 0;
-        for (File image: images) {
-            Mat img = imread(image.getAbsolutePath(), CV_LOAD_IMAGE_GRAYSCALE);
-            mv.put(count, img);
-            int label = Integer.parseInt(image.getName().split("\\-")[0]);
-            if (!map.containsKey(label)) {
-                map.put(label, image.getName().split("\\-")[1]);
+        if (labels != null && images.size() > 0) {
+            IntBuffer buf = labels.getIntBuffer();
+            int count = 0;
+            for (File image : images) {
+                Mat img = imread(image.getAbsolutePath(), CV_LOAD_IMAGE_GRAYSCALE);
+                mv.put(count, img);
+                int label = Integer.parseInt(image.getName().split("\\-")[0]);
+                if (!map.containsKey(label)) {
+                    map.put(label, image.getName().split("\\-")[1]);
+                }
+                buf.put(count, label);
+                count++;
             }
-            buf.put(count, label);
-            count++;
+            recognizer.train(mv, labels);
         }
-        recognizer.train(mv, labels);
     }
 
     protected List<File> getListFiles(File parentDir) {
         ArrayList<File> inFiles = new ArrayList<>();
         File[] files = parentDir.listFiles();
+        if (files == null) {
+            return inFiles;
+        }
         for (File file : files) {
             if (file.isDirectory()) {
                 inFiles.addAll(getListFiles(file));
