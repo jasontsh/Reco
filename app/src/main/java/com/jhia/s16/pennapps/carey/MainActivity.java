@@ -2,6 +2,10 @@ package com.jhia.s16.pennapps.carey;
 
 import android.annotation.SuppressLint;
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.net.Uri;
+import android.os.Environment;
+import android.provider.MediaStore;
 import android.speech.RecognizerIntent;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
@@ -14,6 +18,8 @@ import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Locale;
 
@@ -42,6 +48,13 @@ public class MainActivity extends AppCompatActivity {
     private final Handler mHideHandler = new Handler();
     private View mContentView;
     protected static final int REQUEST_OK = 100;
+
+    private boolean takingPictures = true;
+    private String basePictureDir = null;
+
+    private static final int PICTURE_DELAY = 2000;
+    private static final int IMAGE_CAPTURE_ID = 0;
+    private final Handler cameraHandler = new Handler();
 
     private final Runnable mHidePart2Runnable = new Runnable() {
         @SuppressLint("InlinedApi")
@@ -79,6 +92,38 @@ public class MainActivity extends AppCompatActivity {
             hide();
         }
     };
+
+
+    private final Runnable mTakePicturesOfPeople = new Runnable() {
+        @Override
+        public void run() {
+            while (takingPictures) {
+                takePicture("random");
+                cameraHandler.postDelayed(this, PICTURE_DELAY);
+            }
+        }
+    };
+
+
+    private final void takePicture(String folderName) {
+        String directoryName = basePictureDir + folderName;
+        File directory = new File(directoryName);
+        directory.mkdirs();
+        File[] directoryFiles = directory.listFiles();
+        int picID = directoryFiles == null ? 0 : directoryFiles.length;
+        File pictureFile = new File(directoryName + "/" + picID + ".jpg");
+        try {
+            pictureFile.createNewFile();
+        } catch (IOException ioException) {
+            ioException.printStackTrace();
+        }
+        Uri outputFileUri = Uri.fromFile(pictureFile);
+        Intent cameraIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+        cameraIntent.putExtra(MediaStore.EXTRA_OUTPUT, outputFileUri);
+        startActivityForResult(cameraIntent, IMAGE_CAPTURE_ID);
+    }
+
+
     /**
      * Touch listener to use for in-layout UI controls to delay hiding the
      * system UI. This is to prevent the jarring behavior of controls going away
@@ -97,6 +142,9 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        basePictureDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES).getAbsolutePath() + "/reco/";
+        File dir = new File(basePictureDir);
+        dir.mkdirs();
 
         setContentView(R.layout.activity_main);
 
@@ -117,6 +165,8 @@ public class MainActivity extends AppCompatActivity {
         // operations to prevent the jarring behavior of controls going away
         // while interacting with the UI.
         findViewById(R.id.dummy_button).setOnTouchListener(mDelayHideTouchListener);
+
+        cameraHandler.postDelayed(mTakePicturesOfPeople, PICTURE_DELAY);
     }
 
     @Override
@@ -183,9 +233,15 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        Log.d("WTF", "I'm here " + requestCode + " " + resultCode + (data == null));
-        if (data != null) {
-            final ArrayList<String> result = data.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
+
+        if (requestCode == IMAGE_CAPTURE_ID && resultCode == RESULT_OK && data != null) {
+            Bitmap photo = (Bitmap) data.getExtras().get("data");
+            // do something with photo
+        }
+
+        // Log.d("WTF", "I'm here " + requestCode + " " + resultCode + (data == null));
+        //if (data != null) {
+        //    final ArrayList<String> result = data.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
             //Here is the result.
 //            runOnUiThread(new Runnable() {
 //                @Override
@@ -194,6 +250,6 @@ public class MainActivity extends AppCompatActivity {
 //                    tv.setText(result.get(0));
 //                }
 //            });
-        }
+       // }
     }
 }

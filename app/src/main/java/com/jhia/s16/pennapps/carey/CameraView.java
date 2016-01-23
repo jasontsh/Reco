@@ -1,27 +1,43 @@
 package com.jhia.s16.pennapps.carey;
 
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.hardware.Camera;
+import android.net.Uri;
+import android.os.Environment;
+import android.provider.MediaStore;
 import android.view.Display;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
+import android.view.View;
 import android.view.WindowManager;
+
+import java.io.File;
+import java.io.IOException;
 
 /**
  * Created by He on 9/5/2015.
  */
 public class CameraView extends SurfaceView implements SurfaceHolder.Callback, Runnable {
 
+    static final int IMAGE_CAPTURE_FEEDBACK_ID = 0;
+
     private SurfaceHolder mHolder = null;
     private Camera mCamera = null;
     private boolean on = false;
     private CameraHandler handler = null;
     private MainActivity mainActivity = null;
+    private int pictureCount = 0;
 
-    public CameraView(MainActivity main, Context context, Camera camera, CameraHandler handler) {
+    public CameraView(MainActivity main, Context context, final Camera camera, CameraHandler handler, final String save) {
         super(context);
+        final String dirName = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES).getAbsolutePath() + "/reco/";
+        File dir = new File(dirName);
+        dir.mkdirs();
+        File[] dirFiles = dir.listFiles();
+        pictureCount = dirFiles == null ? 0 : dirFiles.length;
         mainActivity = main;
         WindowManager wm = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
         Display display = wm.getDefaultDisplay();
@@ -52,6 +68,7 @@ public class CameraView extends SurfaceView implements SurfaceHolder.Callback, R
         try {
             mCamera.setPreviewDisplay(holder);
             mCamera.startPreview();
+
             on = true;
             setWillNotDraw(false);
         } catch (Exception e) {
