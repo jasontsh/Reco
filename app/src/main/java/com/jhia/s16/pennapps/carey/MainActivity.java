@@ -72,6 +72,8 @@ public class MainActivity extends AppCompatActivity {
 
     private Bitmap mostRecentImage = null;
     private Semaphore semaphore = new Semaphore(1);
+    private boolean imageFresh = false;
+    private boolean forceImage = false;
 
     private final Runnable mHidePart2Runnable = new Runnable() {
         @SuppressLint("InlinedApi")
@@ -241,16 +243,17 @@ public class MainActivity extends AppCompatActivity {
                 } else if (System.currentTimeMillis() - time > PICTURE_DELAY) {
                     savePicture("random", image);
                 }
-                if (++counter > 300) {
-                    counter = 0;
-                    try {
-                        semaphore.acquire();
-                    } catch (InterruptedException e) {
+                try {
+                    semaphore.acquire();
+                } catch (InterruptedException e) {
 
-                    }
-                    mostRecentImage = image;
-                    semaphore.release();
                 }
+                if (++counter > 300 || forceImage) {
+                    counter = 0;
+                    mostRecentImage = image;
+                    imageFresh = true;
+                }
+                semaphore.release();
             }
         };
         CameraHandler handler = new CameraHandler();
@@ -283,9 +286,25 @@ public class MainActivity extends AppCompatActivity {
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
+        imageFresh = false;
         Bitmap mostRecent = mostRecentImage;
         semaphore.release();
         return mostRecent;
+    }
+
+    public Bitmap sudoGetMostRecentImage() {
+        try {
+            semaphore.acquire();
+        } catch (InterruptedException e) {
+
+        }
+        forceImage = true;
+        semaphore.release();
+        return getMostRecentImage();
+    }
+
+    public boolean isMostRecentImageFresh() {
+        return imageFresh;
     }
 
     @Override
