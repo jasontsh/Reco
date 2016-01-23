@@ -329,12 +329,13 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    public void delete(String note) {SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mActivity);
+    public void delete(String note) {
         if (person == null) {
             savePicture("temp.png", getMostRecentImage());
             person = rec.findPersonFromPhoto(basePictureDir + "/temp.png");
         }
         if (person != null) {
+            SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mActivity);
             if (notes == null) {
                 notes = new ArrayList<>(sp.getStringSet(person, new HashSet<String>()));
             }
