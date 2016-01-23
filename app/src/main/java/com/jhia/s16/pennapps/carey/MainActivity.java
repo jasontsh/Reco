@@ -1,8 +1,14 @@
 package com.jhia.s16.pennapps.carey;
 
 import android.annotation.SuppressLint;
+import android.app.Activity;
 import android.content.Intent;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.ImageFormat;
+import android.graphics.Rect;
+import android.graphics.YuvImage;
+import android.hardware.Camera;
 import android.net.Uri;
 import android.os.Environment;
 import android.provider.MediaStore;
@@ -16,9 +22,12 @@ import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.SurfaceView;
 import android.view.View;
+import android.widget.FrameLayout;
+import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -45,6 +54,12 @@ public class MainActivity extends AppCompatActivity {
     private static final int PICTURE_DELAY = 20000;
     private static final int IMAGE_CAPTURE_ID = 1;
     private final Handler cameraHandler = new Handler();
+
+    private Camera mCamera = null;
+    private CameraView mCameraView = null;
+    private CameraHandler mCameraHandler = null;
+    private Camera.PreviewCallback previewCallback = null;
+    private Activity mActivity = this;
 
     private final Runnable mHidePart2Runnable = new Runnable() {
         @SuppressLint("InlinedApi")
@@ -130,6 +145,41 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         mVisible = true;
+
+        // HE patch
+
+        mCamera = CameraView.getCameraInstance();
+        mCamera.setDisplayOrientation(90);
+        Camera.Size previewSize = mCamera.getParameters().getPreviewSize();
+        previewCallback = new Camera.PreviewCallback() {
+
+            @Override
+            public void onPreviewFrame(byte[] data, Camera camera) {
+                execute(data);
+            }
+
+            private void execute(byte[] data) {
+                Camera.Size previewSize = mCamera.getParameters().getPreviewSize();
+                ByteArrayOutputStream out = new ByteArrayOutputStream();
+                YuvImage yuvImg =
+                        new YuvImage(data, ImageFormat.NV21, previewSize.width, previewSize.height, null);
+                yuvImg.compressToJpeg(new Rect(0, 0, previewSize.width, previewSize.height), 50, out);
+                byte[] imageBytes = out.toByteArray();
+                Bitmap image = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length);
+                if (image == null) {
+                    System.out.println("NULL IMAGE PREVIEW");
+                } else {
+                    // preview
+                }
+            }
+        };
+        CameraHandler handler = new CameraHandler();
+        mCameraView = new CameraView(this, this, mCamera, handler);
+        FrameLayout preview = (FrameLayout) findViewById(R.id.framelayout);
+        preview.addView(mCameraView);
+        mCamera.setPreviewCallback(previewCallback);
+        //
+
         mControlsView = findViewById(R.id.fullscreen_content_controls);
         sv = (SurfaceView) findViewById(R.id.surfaceView);
 

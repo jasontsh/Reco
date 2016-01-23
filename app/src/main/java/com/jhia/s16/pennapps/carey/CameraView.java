@@ -30,7 +30,7 @@ public class CameraView extends SurfaceView implements SurfaceHolder.Callback, R
     private MainActivity mainActivity = null;
     private int pictureCount = 0;
 
-    public CameraView(MainActivity main, Context context, final Camera camera, CameraHandler handler, final String save) {
+    public CameraView(MainActivity main, Context context, final Camera camera, CameraHandler handler) {
         super(context);
         final String dirName = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES).getAbsolutePath() + "/reco/";
         File dir = new File(dirName);
