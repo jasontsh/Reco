@@ -252,6 +252,7 @@ public class MainActivity extends AppCompatActivity {
                     counter = 0;
                     mostRecentImage = image;
                     imageFresh = true;
+                    forceImage = false;
                 }
                 semaphore.release();
             }
