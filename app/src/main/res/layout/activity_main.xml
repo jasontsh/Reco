@@ -26,6 +26,7 @@
         android:layout_height="match_parent"
         android:fitsSystemWindows="true">
 
+
         <LinearLayout
             android:id="@+id/fullscreen_content_controls"
             style="?metaButtonBarStyle"
@@ -45,6 +46,12 @@
                 android:text="@string/dummy_button" />
 
         </LinearLayout>
+
+        <SurfaceView
+            android:layout_width="match_parent"
+            android:layout_height="466dp"
+            android:id="@+id/surfaceView"
+            android:layout_gravity="left|top"/>
     </FrameLayout>
 
 </FrameLayout>
