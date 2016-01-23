@@ -115,12 +115,11 @@ public class MainActivity extends AppCompatActivity {
         File directory = new File(directoryName);
         directory.mkdirs();
         // File pictureFile = new File(directoryName + "/" + fileName + ".jpg");
-        if (!(sv instanceof CameraView)) {
-            System.out.println("ERROR not instanceof CameraView");
+        if (mCameraView == null) {
+            System.out.println("ERROR mCameraView null");
             return;
         }
-        CameraView cv = (CameraView) sv;
-        cv.captureImage(directoryName + "/" + fileName + ".jpg");
+        mCameraView.captureImage(directoryName + "/" + fileName + ".jpg");
         //try {
             //pictureFile.createNewFile();
         //} catch (IOException ioException) {
