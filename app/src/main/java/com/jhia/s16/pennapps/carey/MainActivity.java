@@ -52,6 +52,7 @@ public class MainActivity extends AppCompatActivity {
      */
     private String person = null;
     private ArrayList<String> notes = null;
+    private boolean pressed;
     protected static final int REQUEST_OK = 100;
 
     private ImageRecognition rec;
@@ -208,6 +209,8 @@ public class MainActivity extends AppCompatActivity {
                 toggle();
             }
         });
+
+        pressed = false;
     }
 
     public Bitmap getMostRecentImage() {
@@ -256,6 +259,10 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void toggle() {
+        if (pressed) {
+            return;
+        }
+        pressed = true;
         Intent i = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
         i.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
         i.putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault());
@@ -301,7 +308,9 @@ public class MainActivity extends AppCompatActivity {
                     String command = rec.reparse(resulti);
 
                     String[] words = command.split("\\s");
-
+                    if (words == null || words.length <= 2) {
+                        continue;
+                    }
                     if (words[0].equals("reco")) {
                         commandCondition.setCommand(0, "reco");
                     }
@@ -327,6 +336,7 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         }
+        pressed = false;
     }
 
     public void addPerson(String name) {
