@@ -67,6 +67,7 @@ public class MainActivity extends AppCompatActivity {
 
     private Bitmap mostRecentImage = null;
     private Semaphore semaphore = new Semaphore(1);
+    private Semaphore reclock = new Semaphore(1);
     private boolean imageFresh = false;
     private boolean forceImage = false;
 
@@ -86,29 +87,6 @@ public class MainActivity extends AppCompatActivity {
             io.printStackTrace();
         }
     }
-
-
-    private final void takePicture(String fileName) {
-        String directoryName = basePictureDir;
-        File directory = new File(directoryName);
-        directory.mkdirs();
-        // File pictureFile = new File(directoryName + "/" + fileName + ".jpg");
-        if (mCameraView == null) {
-            System.out.println("ERROR mCameraView null");
-            return;
-        }
-        mCameraView.captureImage(directoryName + "/" + fileName + ".jpg");
-        //try {
-        //pictureFile.createNewFile();
-        //} catch (IOException ioException) {
-        //    ioException.printStackTrace();
-        //}
-        // Uri outputFileUri = Uri.fromFile(pictureFile);
-        // Intent cameraIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-        // cameraIntent.putExtra(MediaStore.EXTRA_OUTPUT, outputFileUri);
-        // startActivityForResult(cameraIntent, IMAGE_CAPTURE_ID);
-    }
-
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -227,6 +205,24 @@ public class MainActivity extends AppCompatActivity {
         return imageFresh;
     }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
+        recInit();
+
+    }
+
+    private void recInit() {
+        try {
+            reclock.acquire();
+            rec.init();
+        } catch (InterruptedException e) {
+
+        } finally {
+            reclock.release();
+        }
+    }
+
     private void toggle() {
         Intent i = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
         i.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
@@ -309,7 +305,7 @@ public class MainActivity extends AppCompatActivity {
         editor.putInt("people_count", nextId).apply();
         person = name;
         notes = null;
-        rec.init();
+        recInit();
     }
 
     public void change(String note) {
