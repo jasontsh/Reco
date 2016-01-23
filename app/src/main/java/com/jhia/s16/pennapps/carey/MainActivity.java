@@ -345,6 +345,16 @@ public class MainActivity extends AppCompatActivity {
             final ArrayList<String> result =
                     data.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
             Log.d("WTF", result.get(0));
+            String command = rec.findPersonFromPhoto(result.get(0));
+            String[] words = command.split(" ");
+            if (words[0].equals("reco")) {
+                switch (words[1]) {
+                    case "person":
+                    case "change":
+                    case "delete":
+                    case "note":
+                }
+            }
             //Here is the result.
 //            runOnUiThread(new Runnable() {
 //                @Override
