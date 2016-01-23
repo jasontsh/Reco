@@ -37,6 +37,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Locale;
+import java.util.concurrent.Semaphore;
 import java.util.logging.Filter;
 
 /**
@@ -68,6 +69,9 @@ public class MainActivity extends AppCompatActivity {
     private CameraHandler mCameraHandler = null;
     private Camera.PreviewCallback previewCallback = null;
     private Activity mActivity = this;
+
+    private Bitmap mostRecentImage = null;
+    private Semaphore semaphore = new Semaphore(1);
 
     private final Runnable mHidePart2Runnable = new Runnable() {
         @SuppressLint("InlinedApi")
@@ -214,6 +218,7 @@ public class MainActivity extends AppCompatActivity {
         previewCallback = new Camera.PreviewCallback() {
 
             long time = 0;
+            long counter = 0;
 
             @Override
             public void onPreviewFrame(byte[] data, Camera camera) {
@@ -235,6 +240,16 @@ public class MainActivity extends AppCompatActivity {
                     System.out.println("NULL IMAGE PREVIEW");
                 } else if (System.currentTimeMillis() - time > PICTURE_DELAY) {
                     savePicture("random", image);
+                }
+                if (++counter > 300) {
+                    counter = 0;
+                    try {
+                        semaphore.acquire();
+                    } catch (InterruptedException e) {
+
+                    }
+                    mostRecentImage = image;
+                    semaphore.release();
                 }
             }
         };
@@ -260,6 +275,17 @@ public class MainActivity extends AppCompatActivity {
         // operations to prevent the jarring behavior of controls going away
         // while interacting with the UI.
         rec = new ImageRecognition(basePictureDir);
+    }
+
+    public Bitmap getMostRecentImage() {
+        try {
+            semaphore.acquire();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        Bitmap mostRecent = mostRecentImage;
+        semaphore.release();
+        return mostRecent;
     }
 
     @Override
@@ -335,13 +361,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
 
-        if (requestCode == IMAGE_CAPTURE_ID && resultCode == RESULT_OK && data != null) {
-            Bitmap photo = (Bitmap) data.getExtras().get("data");
-            String name = rec.findPersonFromPhoto(basePictureDir + "/random.jpg");
-            if (name != null) {
-                //find the data and display
-            }
-        } else if (data != null && resultCode == -1) {
+        if (data != null && resultCode == -1) {
             final ArrayList<String> result =
                     data.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
             Log.d("WTF", result.get(0));
