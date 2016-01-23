@@ -12,25 +12,18 @@ import android.graphics.ImageFormat;
 import android.graphics.Rect;
 import android.graphics.YuvImage;
 import android.hardware.Camera;
-import android.net.Uri;
+import android.os.Bundle;
 import android.os.Environment;
+import android.os.Handler;
 import android.preference.PreferenceManager;
-import android.provider.MediaStore;
 import android.speech.RecognizerIntent;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
-import android.os.Bundle;
-import android.os.Handler;
 import android.util.Log;
-import android.view.KeyEvent;
-import android.view.MotionEvent;
-import android.view.SurfaceView;
 import android.view.View;
 import android.widget.FrameLayout;
-import android.widget.RelativeLayout;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import java.io.ByteArrayOutputStream;
@@ -40,7 +33,11 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Locale;
 import java.util.concurrent.Semaphore;
-import java.util.logging.Filter;
+
+import static org.bytedeco.javacpp.opencv_core.*;
+import static org.bytedeco.javacpp.opencv_objdetect.*;
+import static org.bytedeco.javacpp.opencv_highgui.*;
+
 
 /**
  * An example full-screen activity that shows and hides the system UI (i.e.
@@ -383,5 +380,31 @@ public class MainActivity extends AppCompatActivity {
         if (whoIsCurrent == 0) {
             return;
         }
+    }
+
+    public ArrayList<Rect> facepos(Bitmap bm) {
+        IplImage image = IplImage.create(bm.getWidth(), bm.getHeight(), IPL_DEPTH_8U, 4);
+        bm.copyPixelsToBuffer(image.getByteBuffer());
+        ArrayList<Rect> answer = new ArrayList<>();
+        CvHaarClassifierCascade cascade = new
+                CvHaarClassifierCascade();
+        CvMemStorage storage = CvMemStorage.create();
+        CvSeq sign = cvHaarDetectObjects(
+                image,
+                cascade,
+                storage,
+                1.5,
+                3,
+                CV_HAAR_DO_CANNY_PRUNING);
+
+        cvClearMemStorage(storage);
+
+        int total_Faces = sign.total();
+
+        for(int i = 0; i < total_Faces; i++){
+            CvRect r = new CvRect(cvGetSeqElem(sign, i));
+            answer.add(new Rect(r.x(), r.y(), r.width() + r.x(), r.y() + r.height()));
+        }
+        return answer;
     }
 }
