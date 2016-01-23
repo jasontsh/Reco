@@ -39,7 +39,9 @@ public class MainActivity extends AppCompatActivity {
 
     private SurfaceView sv;
 
-    private boolean takingPictures = true;
+    private ImageRecognition rec;
+
+    private boolean takingPictures = true, init = true;
     private String basePictureDir = null;
 
     private static final int PICTURE_DELAY = 20000;
@@ -87,6 +89,10 @@ public class MainActivity extends AppCompatActivity {
     private final Runnable mTakePicturesOfPeople = new Runnable() {
         @Override
         public void run() {
+            if (init) {
+                rec.init();
+                init = false;
+            }
             while (takingPictures) {
                 takePicture("random");
                 cameraHandler.postDelayed(this, PICTURE_DELAY);
@@ -138,7 +144,7 @@ public class MainActivity extends AppCompatActivity {
         // Upon interacting with UI controls, delay any scheduled hide()
         // operations to prevent the jarring behavior of controls going away
         // while interacting with the UI.
-        cameraHandler.postDelayed(mTakePicturesOfPeople, PICTURE_DELAY);
+        rec = new ImageRecognition(basePictureDir);
     }
 
     @Override
@@ -149,6 +155,13 @@ public class MainActivity extends AppCompatActivity {
         // created, to briefly hint to the user that UI controls
         // are available.
         delayedHide(100);
+    }
+
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        cameraHandler.postDelayed(mTakePicturesOfPeople, PICTURE_DELAY);
     }
 
     private void toggle() {
@@ -208,7 +221,10 @@ public class MainActivity extends AppCompatActivity {
 
         if (requestCode == IMAGE_CAPTURE_ID && resultCode == RESULT_OK && data != null) {
             Bitmap photo = (Bitmap) data.getExtras().get("data");
-            // do something with photo
+            String name = rec.findPersonFromPhoto(basePictureDir + "/random.jpg");
+            if (name != null) {
+                //find the data and display
+            }
         } else if (data != null && resultCode == -1) {
             final ArrayList<String> result =
                     data.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
