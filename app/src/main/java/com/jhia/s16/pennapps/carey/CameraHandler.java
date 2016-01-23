@@ -2,8 +2,11 @@ package com.jhia.s16.pennapps.carey;
 
 import android.graphics.Canvas;
 import android.graphics.Paint;
+import android.graphics.Rect;
 
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Created by He on 9/5/2015.
@@ -42,6 +45,19 @@ public class CameraHandler {
             cv.drawText(list.get(i), x + TEXT_X_MARGIN, y + LINE_SPACING + TEXT_HEIGHT, paint);
         }
         cv.drawRect(x, y, x + maxWidth + 2 * TEXT_X_MARGIN, y + totalHeight + 2 * TEXT_Y_MARGIN, paint);
+    }
+
+    public void drawFaces(Canvas cv, ConcurrentHashMap<String, Rect> map) {
+        if (cv == null || map == null || map.isEmpty()) {
+            return;
+        }
+        Paint paint = new Paint();
+        for (Map.Entry<String, Rect> entry : map.entrySet()) {
+            String name = entry.getKey();
+            Rect value = entry.getValue();
+            cv.drawRect(value.left, value.top, value.left + value.width(), value.top + value.height(), paint);
+            cv.drawText(name, value.left + TEXT_X_MARGIN, value.top + TEXT_Y_MARGIN, paint);
+        }
     }
 
 

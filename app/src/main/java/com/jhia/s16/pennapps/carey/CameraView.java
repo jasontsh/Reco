@@ -45,6 +45,7 @@ public class CameraView extends SurfaceView implements SurfaceHolder.Callback, R
         mHolder = getHolder();
         mHolder.addCallback(this);
         mHolder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
+        handler = new CameraHandler();
     }
 
     @Override
@@ -83,9 +84,7 @@ public class CameraView extends SurfaceView implements SurfaceHolder.Callback, R
     @Override
     public void onDraw(Canvas cv) {
         super.onDraw(cv);
-        synchronized (handler) {
-            // handler.drawTargetbox(cv);
-        }
+        handler.drawFaces(cv, mainActivity.getFaceMap());
         Paint textPaint = new Paint();
         textPaint.setColor(0xFFFFFFFF);
         textPaint.setTextSize(40);
