@@ -23,6 +23,7 @@ import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
+import android.view.Window;
 import android.widget.FrameLayout;
 import android.widget.Toast;
 
@@ -121,6 +122,8 @@ public class MainActivity extends AppCompatActivity {
                         .getAbsolutePath() + "/reco/";
         File dir = new File(basePictureDir);
         dir.mkdirs();
+        getWindow().requestFeature(Window.FEATURE_ACTION_BAR);
+        getActionBar().hide();
 
         setContentView(R.layout.activity_main);
 
