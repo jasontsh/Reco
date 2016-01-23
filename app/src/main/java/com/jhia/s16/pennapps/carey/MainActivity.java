@@ -31,12 +31,13 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Locale;
+import java.util.Set;
 import java.util.concurrent.Semaphore;
 
 import static org.bytedeco.javacpp.opencv_core.*;
 import static org.bytedeco.javacpp.opencv_objdetect.*;
-import static org.bytedeco.javacpp.opencv_highgui.*;
 
 
 /**
@@ -48,15 +49,14 @@ public class MainActivity extends AppCompatActivity {
      * Some older devices needs a small delay between UI widget updates
      * and a change of the status and navigation bar.
      */
-    private static final int UI_ANIMATION_DELAY = 300;
-    private final Handler mHideHandler = new Handler();
+    private String person = null;
+    private ArrayList<String> notes = null;
     protected static final int REQUEST_OK = 100;
 
     private ImageRecognition rec;
 
     private boolean takingPictures = true, init = true;
     public static String basePictureDir = null;
-    private int whoIsCurrent = 0;
 
     private static final int PICTURE_DELAY = 20000;
     private static final int IMAGE_CAPTURE_ID = 1;
@@ -73,50 +73,6 @@ public class MainActivity extends AppCompatActivity {
     private boolean imageFresh = false;
     private boolean forceImage = false;
 
-    private final Runnable mHidePart2Runnable = new Runnable() {
-        @SuppressLint("InlinedApi")
-        @Override
-        public void run() {
-            // Delayed removal of status and navigation bar
-
-            // Note that some of these constants are new as of API 16 (Jelly Bean)
-            // and API 19 (KitKat). It is safe to use them, as they are inlined
-            // at compile-time and do nothing on earlier devices.
-            mCameraView.setSystemUiVisibility(
-                    View.SYSTEM_UI_FLAG_LOW_PROFILE | View.SYSTEM_UI_FLAG_FULLSCREEN |
-                            View.SYSTEM_UI_FLAG_LAYOUT_STABLE |
-                            View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY |
-                            View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION |
-                            View.SYSTEM_UI_FLAG_HIDE_NAVIGATION);
-        }
-    };
-    private View mControlsView;
-    private final Runnable mShowPart2Runnable = new Runnable() {
-        @Override
-        public void run() {
-            // Delayed display of UI elements
-            ActionBar actionBar = getSupportActionBar();
-            if (actionBar != null) {
-                actionBar.show();
-            }
-            mControlsView.setVisibility(View.VISIBLE);
-        }
-    };
-
-
-    private final Runnable mTakePicturesOfPeople = new Runnable() {
-        @Override
-        public void run() {
-            if (init) {
-                rec.init();
-                init = false;
-            }
-            while (takingPictures) {
-                takePicture("random");
-                cameraHandler.postDelayed(this, PICTURE_DELAY);
-            }
-        }
-    };
 
     private final void savePicture(String fileName, Bitmap img) {
         try {
@@ -126,7 +82,7 @@ public class MainActivity extends AppCompatActivity {
             File imgFile = new File(directoryName + "/" + fileName + ".png");
             imgFile.createNewFile();
             FileOutputStream fout = new FileOutputStream(imgFile);
-            img.compress(Bitmap.CompressFormat.PNG, 85, fout);
+            img.compress(Bitmap.CompressFormat.PNG, 100, fout);
             fout.flush();
             fout.close();
         } catch (IOException io) {
@@ -259,9 +215,6 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        // Upon interacting with UI controls, delay any scheduled hide()
-        // operations to prevent the jarring behavior of controls going away
-        // while interacting with the UI.
         rec = new ImageRecognition(basePictureDir);
     }
 
@@ -302,16 +255,6 @@ public class MainActivity extends AppCompatActivity {
             Toast.makeText(this, "ERROR", Toast.LENGTH_SHORT).show();
         }
     }
-    @SuppressLint("InlinedApi")
-    private void show() {
-        // Show the system bar
-        mCameraView.setSystemUiVisibility(
-                View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION);
-
-        // Schedule a runnable to display UI elements after a delay
-        mHideHandler.removeCallbacks(mHidePart2Runnable);
-        mHideHandler.postDelayed(mShowPart2Runnable, UI_ANIMATION_DELAY);
-    }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
@@ -345,40 +288,61 @@ public class MainActivity extends AppCompatActivity {
     public void addPerson(String name){
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mActivity);
         int nextId = sp.getInt("people_count", 0) + 1;
-        FileOutputStream out = null;
-        try {
-            out = new FileOutputStream(nextId + "-" + name + "1.png");
-            getMostRecentImage().compress(Bitmap.CompressFormat.PNG, 100, out);
-            out = new FileOutputStream(nextId + "-" + name + "2.png");
-            sudoGetMostRecentImage().compress(Bitmap.CompressFormat.PNG, 100, out);
-        } catch (IOException e) {
-            e.printStackTrace();
-        } finally {
-            try {
-                if (out != null) {
-                    out.close();
-                }
-            } catch (IOException e){
-                e.printStackTrace();
+        savePicture(nextId + "-" + name + "1.png", getMostRecentImage());
+        savePicture(nextId + "-" + name + "2.png", sudoGetMostRecentImage());
+        SharedPreferences.Editor editor = sp.edit();
+        editor.putInt("people_count", nextId).apply();
+        person = name;
+        notes = null;
+        rec.init();
+    }
+
+    public void change(String note) {
+        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mActivity);
+        if (person == null) {
+            savePicture("temp.png", getMostRecentImage());
+            person = rec.findPersonFromPhoto(basePictureDir + "/temp.png");
+        }
+        if (person != null) {
+            if (notes == null) {
+                notes = new ArrayList<>(sp.getStringSet(person, new HashSet<String>()));
+            }
+            int index = parseNumber(note.split(" ")[0]) - 1;
+            if (index < notes.size() && index >= 0){
+                notes.set(index, note);
+                sp.edit().putStringSet(person, new HashSet<>(notes)).apply();
             }
         }
     }
 
-    public void change(String note) {
-        if (whoIsCurrent == 0) {
-            return;
-        }
-    }
-
     public void note(String note) {
-        if (whoIsCurrent == 0) {
-            return;
+        if (person == null) {
+            savePicture("temp.png", getMostRecentImage());
+            person = rec.findPersonFromPhoto(basePictureDir + "/temp.png");
+        }
+        if (person != null) {
+            SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mActivity);
+            Set<String> set = sp.getStringSet(person, new HashSet<String>());
+            set.add(note);
+            sp.edit().putStringSet(person, set).apply();
+            notes = new ArrayList<>(set);
         }
     }
 
-    public void delete(String note) {
-        if (whoIsCurrent == 0) {
-            return;
+    public void delete(String note) {SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mActivity);
+        if (person == null) {
+            savePicture("temp.png", getMostRecentImage());
+            person = rec.findPersonFromPhoto(basePictureDir + "/temp.png");
+        }
+        if (person != null) {
+            if (notes == null) {
+                notes = new ArrayList<>(sp.getStringSet(person, new HashSet<String>()));
+            }
+            int index = parseNumber(note.split(" ")[0]) - 1;
+            if (index < notes.size() && index >= 0){
+                notes.remove(index);
+                sp.edit().putStringSet(person, new HashSet<>(notes)).apply();
+            }
         }
     }
 
@@ -406,5 +370,26 @@ public class MainActivity extends AppCompatActivity {
             answer.add(new Rect(r.x(), r.y(), r.width() + r.x(), r.y() + r.height()));
         }
         return answer;
+    }
+
+    /**
+     * Parse a string s, such as "five", into 5.  1 <= x <= 10 Default return -1
+     * @param s
+     * @return
+     */
+    private int parseNumber(String s) {
+        switch(s.toLowerCase()){
+            case "one": return 1;
+            case "two": return 2;
+            case "three": return 3;
+            case "four": return 4;
+            case "five": return 5;
+            case "six": return 6;
+            case "seven": return 7;
+            case "eight": return 8;
+            case "nine": return 9;
+            case "ten": return 10;
+        }
+        return -1;
     }
 }
