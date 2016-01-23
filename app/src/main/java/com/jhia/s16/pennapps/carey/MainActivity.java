@@ -168,6 +168,7 @@ public class MainActivity extends AppCompatActivity {
                     }
                     if (++counter > 50 || forceImage) {
                         counter = 0;
+                        System.out.println("IMAGE SET");
                         mostRecentImage = image;
                         imageFresh = true;
                         forceImage = false;
