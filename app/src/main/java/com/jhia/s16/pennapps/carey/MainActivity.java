@@ -105,13 +105,6 @@ public class MainActivity extends AppCompatActivity {
             mControlsView.setVisibility(View.VISIBLE);
         }
     };
-    private boolean mVisible;
-    private final Runnable mHideRunnable = new Runnable() {
-        @Override
-        public void run() {
-            hide();
-        }
-    };
 
 
     private final Runnable mTakePicturesOfPeople = new Runnable() {
@@ -177,9 +170,6 @@ public class MainActivity extends AppCompatActivity {
         dir.mkdirs();
 
         setContentView(R.layout.activity_main);
-
-        mVisible = true;
-
 
         if (ContextCompat.checkSelfPermission(mActivity,
                 Manifest.permission.CAMERA)
@@ -263,10 +253,6 @@ public class MainActivity extends AppCompatActivity {
         FrameLayout preview = (FrameLayout) findViewById(R.id.framelayout);
         preview.addView(mCameraView);
         mCamera.setPreviewCallback(previewCallback);
-        //
-
-        mControlsView = findViewById(R.id.fullscreen_content_controls);
-        //sv = (SurfaceView) findViewById(R.id.surfaceView);
 
         // Set up the user interaction to manually show or hide the system UI.
         mCameraView.setOnClickListener(new View.OnClickListener() {
@@ -309,30 +295,7 @@ public class MainActivity extends AppCompatActivity {
         return imageFresh;
     }
 
-    @Override
-    protected void onPostCreate(Bundle savedInstanceState) {
-        super.onPostCreate(savedInstanceState);
-
-        // Trigger the initial hide() shortly after the activity has been
-        // created, to briefly hint to the user that UI controls
-        // are available.
-        delayedHide(100);
-    }
-
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-        // cameraHandler.postDelayed(mTakePicturesOfPeople, PICTURE_DELAY);
-        hide();
-    }
-
     private void toggle() {
-        if (mVisible) {
-            hide();
-        } else {
-            show();
-        }
         Intent i = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
         i.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
         i.putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault());
@@ -342,40 +305,15 @@ public class MainActivity extends AppCompatActivity {
             Toast.makeText(this, "ERROR", Toast.LENGTH_SHORT).show();
         }
     }
-
-    private void hide() {
-        // Hide UI first
-        ActionBar actionBar = getSupportActionBar();
-        if (actionBar != null) {
-            actionBar.hide();
-        }
-        mControlsView.setVisibility(View.GONE);
-        mVisible = false;
-
-        // Schedule a runnable to remove the status and navigation bar after a delay
-        mHideHandler.removeCallbacks(mShowPart2Runnable);
-        mHideHandler.postDelayed(mHidePart2Runnable, UI_ANIMATION_DELAY);
-    }
-
     @SuppressLint("InlinedApi")
     private void show() {
         // Show the system bar
         mCameraView.setSystemUiVisibility(
                 View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION);
-        mVisible = true;
 
         // Schedule a runnable to display UI elements after a delay
         mHideHandler.removeCallbacks(mHidePart2Runnable);
         mHideHandler.postDelayed(mShowPart2Runnable, UI_ANIMATION_DELAY);
-    }
-
-    /**
-     * Schedules a call to hide() in [delay] milliseconds, canceling any
-     * previously scheduled calls.
-     */
-    private void delayedHide(int delayMillis) {
-        mHideHandler.removeCallbacks(mHideRunnable);
-        mHideHandler.postDelayed(mHideRunnable, delayMillis);
     }
 
     @Override
