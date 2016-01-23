@@ -53,7 +53,7 @@ public class MainActivity extends AppCompatActivity {
     private String basePictureDir = null;
 
     private static final int PICTURE_DELAY = 2000;
-    private static final int IMAGE_CAPTURE_ID = 0;
+    private static final int IMAGE_CAPTURE_ID = 1;
     private final Handler cameraHandler = new Handler();
 
     private final Runnable mHidePart2Runnable = new Runnable() {
