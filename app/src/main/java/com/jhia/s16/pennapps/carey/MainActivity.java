@@ -180,10 +180,10 @@ public class MainActivity extends AppCompatActivity {
         //
 
         mControlsView = findViewById(R.id.fullscreen_content_controls);
-        sv = (SurfaceView) findViewById(R.id.surfaceView);
+        //sv = (SurfaceView) findViewById(R.id.surfaceView);
 
         // Set up the user interaction to manually show or hide the system UI.
-        sv.setOnClickListener(new View.OnClickListener() {
+        mCameraView.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 toggle();
