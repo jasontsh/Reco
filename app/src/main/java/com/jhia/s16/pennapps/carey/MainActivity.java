@@ -65,12 +65,12 @@ public class MainActivity extends AppCompatActivity {
             // Note that some of these constants are new as of API 16 (Jelly Bean)
             // and API 19 (KitKat). It is safe to use them, as they are inlined
             // at compile-time and do nothing on earlier devices.
-            mContentView.setSystemUiVisibility(View.SYSTEM_UI_FLAG_LOW_PROFILE
-                    | View.SYSTEM_UI_FLAG_FULLSCREEN
-                    | View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                    | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
-                    | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-                    | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION);
+            mContentView.setSystemUiVisibility(
+                    View.SYSTEM_UI_FLAG_LOW_PROFILE | View.SYSTEM_UI_FLAG_FULLSCREEN |
+                            View.SYSTEM_UI_FLAG_LAYOUT_STABLE |
+                            View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY |
+                            View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION |
+                            View.SYSTEM_UI_FLAG_HIDE_NAVIGATION);
         }
     };
     private View mControlsView;
@@ -142,7 +142,9 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        basePictureDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES).getAbsolutePath() + "/reco/";
+        basePictureDir =
+                Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)
+                        .getAbsolutePath() + "/reco/";
         File dir = new File(basePictureDir);
         dir.mkdirs();
 
@@ -212,8 +214,8 @@ public class MainActivity extends AppCompatActivity {
     @SuppressLint("InlinedApi")
     private void show() {
         // Show the system bar
-        mContentView.setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION);
+        mContentView.setSystemUiVisibility(
+                View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION);
         mVisible = true;
 
         // Schedule a runnable to display UI elements after a delay
@@ -237,19 +239,30 @@ public class MainActivity extends AppCompatActivity {
         if (requestCode == IMAGE_CAPTURE_ID && resultCode == RESULT_OK && data != null) {
             Bitmap photo = (Bitmap) data.getExtras().get("data");
             // do something with photo
+        } else if (data != null) {
+            final ArrayList<String> result =
+                    data.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
+            //Here is the result.
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    TextView tv = (TextView) findViewById(R.id.fullscreen_content);
+                    tv.setText(result.get(0));
+                }
+            });
         }
 
         // Log.d("WTF", "I'm here " + requestCode + " " + resultCode + (data == null));
         //if (data != null) {
         //    final ArrayList<String> result = data.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
-            //Here is the result.
-//            runOnUiThread(new Runnable() {
-//                @Override
-//                public void run() {
-//                    TextView tv = (TextView) findViewById(R.id.fullscreen_content);
-//                    tv.setText(result.get(0));
-//                }
-//            });
-       // }
+        //Here is the result.
+        //            runOnUiThread(new Runnable() {
+        //                @Override
+        //                public void run() {
+        //                    TextView tv = (TextView) findViewById(R.id.fullscreen_content);
+        //                    tv.setText(result.get(0));
+        //                }
+        //            });
+        // }
     }
 }

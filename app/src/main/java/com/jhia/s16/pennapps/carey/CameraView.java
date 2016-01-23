@@ -22,8 +22,6 @@ import java.io.IOException;
  */
 public class CameraView extends SurfaceView implements SurfaceHolder.Callback, Runnable {
 
-    static final int IMAGE_CAPTURE_FEEDBACK_ID = 0;
-
     private SurfaceHolder mHolder = null;
     private Camera mCamera = null;
     private boolean on = false;
