@@ -52,7 +52,7 @@ public class ImageRecognition {
             if (file.isDirectory()) {
                 inFiles.addAll(getListFiles(file));
             } else {
-                if(file.getName().endsWith(".png")){
+                if(file.getName().endsWith(".jpg")){
                     inFiles.add(file);
                 }
             }
@@ -67,6 +67,10 @@ public class ImageRecognition {
      */
     public String findPersonFromPhoto(String s) {
         Mat img = imread(s, CV_LOAD_IMAGE_GRAYSCALE);
-        return map.get(recognizer.predict(img));
+        int buffer = recognizer.predict(img);
+        if (buffer <= 0) {
+            return null;
+        }
+        return map.get(buffer);
     }
 }
