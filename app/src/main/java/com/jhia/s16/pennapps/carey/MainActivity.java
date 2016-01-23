@@ -21,7 +21,6 @@ import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
-import android.view.Window;
 import android.widget.FrameLayout;
 import android.widget.Toast;
 
@@ -119,16 +118,20 @@ public class MainActivity extends AppCompatActivity {
                         .getAbsolutePath() + "/reco/";
         File dir = new File(basePictureDir);
         dir.mkdirs();
-        getWindow().requestFeature(Window.FEATURE_ACTION_BAR);
-        getActionBar().hide();
 
         setContentView(R.layout.activity_main);
 
         if (ContextCompat.checkSelfPermission(mActivity, Manifest.permission.CAMERA) !=
-                PackageManager.PERMISSION_GRANTED) {
+                PackageManager.PERMISSION_GRANTED ||
+                ContextCompat.checkSelfPermission(mActivity, Manifest.permission.READ_EXTERNAL_STORAGE) !=
+                        PackageManager.PERMISSION_GRANTED ||
+                ContextCompat.checkSelfPermission(mActivity, Manifest.permission.WRITE_EXTERNAL_STORAGE) !=
+                        PackageManager.PERMISSION_GRANTED) {
 
             ActivityCompat
-                    .requestPermissions(mActivity, new String[]{Manifest.permission.CAMERA}, 2);
+                    .requestPermissions(mActivity, new String[]{Manifest.permission.CAMERA,
+                            Manifest.permission.READ_EXTERNAL_STORAGE,
+                            Manifest.permission.WRITE_EXTERNAL_STORAGE}, 2);
         }
         mCamera = CameraView.getCameraInstance();
         if (mCamera == null) {
