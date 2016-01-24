@@ -83,6 +83,10 @@ public class MainActivity extends AppCompatActivity {
     private Activity mActivity = this;
 
     //private Bitmap mostRecentImage = null;
+
+    private ConcurrentHashMap<String, Bitmap> damnGarbageCollector = new ConcurrentHashMap<>();
+    private static final String IMAGE_KEY_RECENT = "recent";
+
     private Semaphore semaphore = new Semaphore(1);
     private Semaphore reclock = new Semaphore(1);
     private boolean imageFresh = false;
@@ -179,20 +183,25 @@ public class MainActivity extends AppCompatActivity {
                 byte[] imageBytes = out.toByteArray();
                 //if (mostRecentImage != null && !mostRecentImage.isRecycled())
                 //    mostRecentImage.recycle();
+                try {
+                    semaphore.acquire();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                final String imageKey = IMAGE_KEY_RECENT;
+                if (damnGarbageCollector.get(imageKey) != null) {
+                    damnGarbageCollector.get(imageKey).recycle();
+                }
                 Bitmap image = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length);
-                if (image == null) {
+                damnGarbageCollector.put(IMAGE_KEY_RECENT, image);
+                if (damnGarbageCollector.get(IMAGE_KEY_RECENT) == null) {
                     System.out.println("NULL IMAGE PREVIEW");
                 } else {
                     if (System.currentTimeMillis() - time > PICTURE_DELAY) {
-                        savePicture("random", image);
+                        savePicture("random", damnGarbageCollector.get(IMAGE_KEY_RECENT));
                         time = System.currentTimeMillis();
                     }
                     ++counter;
-                    try {
-                        semaphore.acquire();
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
                     //Bitmap.createBitmap(mCameraView.getDrawingCache());
                     //mostRecentImage = image.copy(Bitmap.Config.RGB_565, true);
                     if (counter > 30 || forceImage) {
@@ -205,8 +214,9 @@ public class MainActivity extends AppCompatActivity {
                     int maxFaces = 4;
 
                     FaceDetector.Face[] faces = new FaceDetector.Face[maxFaces];
-                    FaceDetector fd = new FaceDetector(image.getWidth(), image.getHeight(), maxFaces);
-                    int faceCount = fd.findFaces(image, faces);
+                    FaceDetector fd = new FaceDetector(damnGarbageCollector.get(imageKey).getWidth(), damnGarbageCollector.get(imageKey).getHeight(), maxFaces);
+
+                    int faceCount = fd.findFaces(damnGarbageCollector.get(imageKey), faces);
                     if (faceCount > 0) {
                         faceTimer.set(System.currentTimeMillis());
                     }
@@ -228,46 +238,14 @@ public class MainActivity extends AppCompatActivity {
                     if (System.currentTimeMillis() - faceTimer.get() > 500) {
                         faceMap.clear();
                     }
-                    semaphore.release();
+
+
+                   semaphore.release();
                 }
 
             }
             //}
         };
-
-
-        mCamera.setFaceDetectionListener(new Camera.FaceDetectionListener() {
-            @Override
-            public void onFaceDetection(Camera.Face[] faces, Camera camera) {
-
-                Log.d("face deted", "l'l'aomaokai");
-                faceTimer.set(System.currentTimeMillis());
-                Bitmap image = sudoGetMostRecentImage();
-                if (image != null) {
-                    for (Camera.Face face : faces) {
-                        if (face.score < 50) {
-                            continue;
-                        }
-                        Bitmap faceBMP = Bitmap.createBitmap(image, face.rect.left, face.rect.top, face.rect.width(), face.rect.height());
-
-                        faceBMP = MainActivity.getResizedBitmap(faceBMP, ImageRecognition.TRAINING_IMAGE_WIDTH, ImageRecognition.TRAINING_IMAGE_HEIGHT);
-
-                        // processing
-
-                        savePicture("random", faceBMP);
-                        try {
-                            reclock.acquire();
-                        } catch (InterruptedException e) {
-
-                        }
-                        person = rec.findPersonFromPhoto("random");
-
-                        faceMap.put(person, face.rect);
-                        reclock.release();
-                    }
-                }
-            }
-        });
 
         CameraHandler handler = new CameraHandler();
         mCameraView = new CameraView(this, this, mCamera, handler);
@@ -310,7 +288,6 @@ public class MainActivity extends AppCompatActivity {
         // "RECREATE" THE NEW BITMAP
         Bitmap resizedBitmap = Bitmap.createBitmap(
                 bm, 0, 0, width, height, matrix, false);
-        bm.recycle();
         return resizedBitmap;
     }
 
@@ -321,7 +298,7 @@ public class MainActivity extends AppCompatActivity {
             e.printStackTrace();
         }
         imageFresh = false;
-        Bitmap mostRecent = /*mostRecentImage;*/ null;
+        Bitmap mostRecent = damnGarbageCollector.get(IMAGE_KEY_RECENT);
         semaphore.release();
         return mostRecent;
     }
