@@ -26,8 +26,10 @@ import android.util.Log;
 import android.view.View;
 import android.widget.FrameLayout;
 import android.widget.Toast;
+
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -81,6 +83,8 @@ public class MainActivity extends AppCompatActivity {
 
     private ConcurrentHashMap<String, Rect> faceMap = new ConcurrentHashMap<>();
     private AtomicLong faceTimer = new AtomicLong(0);
+
+    private Semaphore photolock = new Semaphore(1);
 
 
     private final void savePicture(String fileName, Bitmap img) {
@@ -174,24 +178,22 @@ public class MainActivity extends AppCompatActivity {
                     damnGarbageCollector.get(imageKey).recycle();
                 }
                 Bitmap image = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length);
-                damnGarbageCollector.put(IMAGE_KEY_RECENT, image);
+                //Bitmap image = BitmapFactory.decodeByteArray(data, 0, data.length);
+                if (image != null) {
+                    image = image.copy(Bitmap.Config.RGB_565, true);
+                    damnGarbageCollector.put(IMAGE_KEY_RECENT, image);
+                    photolock.release();
+                }
                 if (damnGarbageCollector.get(IMAGE_KEY_RECENT) == null) {
                     System.out.println("NULL IMAGE PREVIEW");
                 } else {
                     if (System.currentTimeMillis() - time > PICTURE_DELAY) {
-                        savePicture("random", damnGarbageCollector.get(IMAGE_KEY_RECENT));
+                        // savePicture("random", damnGarbageCollector.get(IMAGE_KEY_RECENT));
                         time = System.currentTimeMillis();
                     }
-                    ++counter;
                     //Bitmap.createBitmap(mCameraView.getDrawingCache());
                     //mostRecentImage = image.copy(Bitmap.Config.RGB_565, true);
-                    if (counter > 30 || forceImage) {
-                        counter = 0;
-                        System.out.println("IMAGE SET");
 
-                        imageFresh = true;
-                        forceImage = false;
-                    }
                     int maxFaces = 4;
 
                     FaceDetector.Face[] faces = new FaceDetector.Face[maxFaces];
@@ -208,12 +210,14 @@ public class MainActivity extends AppCompatActivity {
                         }
                         PointF midPoint = new PointF();
                         f.getMidPoint(midPoint);
+
                         float eyesDistance = f.eyesDistance();
-                        float x = midPoint.x - eyesDistance * 2;
-                        float y = midPoint.y - eyesDistance * 2;
-                        float xpw = midPoint.x + eyesDistance * 2;
-                        float yph = midPoint.y + eyesDistance * 2;
-                        Rect rect = new Rect((int) x, (int) y, (int) xpw, (int) yph);
+                        float x = Math.max(midPoint.x - eyesDistance, 0);
+                        float y = Math.max(midPoint.y - eyesDistance, 0);
+                        float xpw = midPoint.x + eyesDistance;
+                        float yph = midPoint.y + eyesDistance;
+                        Log.d("MIDPOINT", midPoint.toString() + " " + eyesDistance);
+                        Rect rect = new Rect((int) x, (int) y, (int) (xpw - x), (int) (yph - y));
                         Log.d("DRAWING", rect.toString());
                         Bitmap sub = Bitmap.createBitmap(damnGarbageCollector.get(IMAGE_KEY_RECENT), (int) x, (int) y, (int) (xpw - x), (int) (yph - y));
                         savePicture("random", sub);
@@ -236,16 +240,11 @@ public class MainActivity extends AppCompatActivity {
 
                     }
                     person = rec.findPersonFromPhoto("random");
-<<<<<<< HEAD
+                    reclock.release();
                     if (person != null) {
                         notes = new ArrayList<>(PreferenceManager.getDefaultSharedPreferences(mActivity).getStringSet(person, new HashSet<String>()));
                     }
-                   semaphore.release();
-=======
-                    reclock.release();
-                    notes = new ArrayList<>(PreferenceManager.getDefaultSharedPreferences(mActivity).getStringSet(person, new HashSet<String>()));
                     semaphore.release();
->>>>>>> 3bd6adcfe8a9d3edaf9e82cdaa00678b815d39cf
                 }
 
             }
@@ -393,25 +392,25 @@ public class MainActivity extends AppCompatActivity {
                     if (words[0].equals("reco")) {
                         commandCondition.setCommand(0, "reco");
                     }
-
-                    switch (words[1]) {
-                        case "person":
-                            addPerson(words[2]);
-                            commandCondition.setCommand(1, "person");
-                            break;
-                        case "change":
-                            change(command.substring(12));
-                            commandCondition.setCommand(1, "change");
-                            break;
-                        case "delete":
-                            delete(command.substring(12));
-                            commandCondition.setCommand(1, "delete");
-                            break;
-                        case "note":
-                            note(command.substring(10));
-                            commandCondition.setCommand(1, "note");
-                            break;
-                    }
+                    if (commandCondition.getCommands()[1] == null || commandCondition.getCommands()[1].equals(""))
+                        switch (words[1]) {
+                            case "person":
+                                addPerson(words[2]);
+                                commandCondition.setCommand(1, "person");
+                                break;
+                            case "change":
+                                change(command.substring(12));
+                                commandCondition.setCommand(1, "change");
+                                break;
+                            case "delete":
+                                delete(command.substring(12));
+                                commandCondition.setCommand(1, "delete");
+                                break;
+                            case "note":
+                                note(command.substring(10));
+                                commandCondition.setCommand(1, "note");
+                                break;
+                        }
                 }
             }
         }
@@ -420,39 +419,63 @@ public class MainActivity extends AppCompatActivity {
 
     public void addPerson(String name) {
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mActivity);
+        int highestID = 1;
+
+        for (File f : new File(basePictureDir).listFiles()) {
+            if (f.getName().contains(name)) {
+                highestID++;
+            }
+        }
+
+
         int nextId = sp.getInt("people_count", 0) + 1;
+        try {
+            photolock.acquire();
+        } catch (InterruptedException e) {
+
+        }
         Bitmap p1 = getMostRecentImage();
+        int bufferId = nextId + (nextId % 2);
         if (p1 != null) {
-            savePicture(nextId + "-" + name + "1", p1);
+            savePicture(bufferId + "-" + name + "-" + highestID, p1);
+        }
+        /*try {
+            photolock.acquire();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
         }
         p1 = sudoGetMostRecentImage();
         if (p1 != null) {
-            savePicture(nextId + "-" + name + "2", p1);
-        }
+            p1.setPixel(0, 0, 0);
+            savePicture(nextId + "-" + name + "-" + (highestID + 1), p1);
+        }*/
+        // photolock.release();
         SharedPreferences.Editor editor = sp.edit();
         editor.putInt("people_count", nextId).apply();
         person = name;
         notes = null;
-        recInit();
+        if (highestID > 2) {
+            recInit();
+        }
     }
 
     public void change(String note) {
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mActivity);
         if (person == null) {
-            savePicture("temp", getMostRecentImage());
+            savePicture("random", getMostRecentImage());
             try {
                 reclock.acquire();
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
-            person = rec.findPersonFromPhoto(basePictureDir + "/temp");
+            person = rec.findPersonFromPhoto(basePictureDir + "/random");
             reclock.release();
         }
         if (person != null) {
             if (notes == null) {
                 notes = new ArrayList<>(sp.getStringSet(person, new HashSet<String>()));
             }
-            int index = parseNumber(note.split(" ")[0]) - 1;
+            int index = parseNumber(note.split("\\s")[0]) - 1;
             if (index < notes.size() && index >= 0) {
                 notes.set(index, note);
                 sp.edit().putStringSet(person, new HashSet<>(notes)).apply();
@@ -462,13 +485,13 @@ public class MainActivity extends AppCompatActivity {
 
     public void note(String note) {
         if (person == null) {
-            savePicture("temp", getMostRecentImage());
+            savePicture("random", getMostRecentImage());
             try {
                 reclock.acquire();
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
-            person = rec.findPersonFromPhoto(basePictureDir + "/temp");
+            person = rec.findPersonFromPhoto(basePictureDir + "/random");
             reclock.release();
         }
         if (person != null) {
@@ -482,13 +505,13 @@ public class MainActivity extends AppCompatActivity {
 
     public void delete(String note) {
         if (person == null) {
-            savePicture("temp", getMostRecentImage());
+            savePicture("random", getMostRecentImage());
             try {
                 reclock.acquire();
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
-            person = rec.findPersonFromPhoto(basePictureDir + "/temp");
+            person = rec.findPersonFromPhoto(basePictureDir + "/random");
             reclock.release();
         }
         if (person != null) {

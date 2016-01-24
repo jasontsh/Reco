@@ -36,6 +36,8 @@ public class ImageRecognition {
         inited = false;
     }
 
+    private HashMap<Integer, Object> theBrotherOfTheDamnGarbageCollector = new HashMap<>();
+
     public void init() {
         inited = true;
         Log.d("ImageRecognition", "initstart");
@@ -43,44 +45,25 @@ public class ImageRecognition {
         MatVector mv = new MatVector(images.size());
 
         Mat labels = new Mat(images.size(), 1, CV_32SC1);
-        boolean empty = true;
+
+        int cc = 0;
         if (labels != null && images.size() > 0) {
             IntBuffer buf = labels.getIntBuffer();
             int count = 0;
             for (File image : images) {
                 Log.d("ImageReco", image.getAbsolutePath());
-                /*if (image == null || !image.getName().endsWith(".png")) {
-                    continue;
-                }
-                Log.d("ImageReco", image.getAbsolutePath());
-                Bitmap bmp = BitmapFactory.decodeFile(image.getAbsolutePath());
-                if (bmp == null) {
-                    continue;
-                }
-                bmp = MainActivity.getResizedBitmap(bmp, TRAINING_IMAGE_WIDTH, TRAINING_IMAGE_HEIGHT);
-                try {
-                    image.delete();
-                    image.createNewFile();
-                    FileOutputStream fout = new FileOutputStream(image);
-                    bmp.copy(Bitmap.Config.RGB_565, true).compress(Bitmap.CompressFormat.PNG, 100, fout);
-                    fout.flush();
-                    fout.close();
-                } catch (IOException e) {
-
-                }
-                */
-                if(image.getName().contains("random.png")){
+                if(image == null || image.getTotalSpace() == 0 || image.getName().contains("random.png") || !image.getName().endsWith(".png")){
                     continue;
                 }
 
                 Mat img = imread(image.getAbsolutePath(), CV_LOAD_IMAGE_GRAYSCALE);
-                if (img == null || img.total() == 0 || img.empty()) {
+                if (img == null || img.total() == 0 || img.empty() || img.rows() == 0 || img.cols() == 0 || !img.isContinuous()) {
                     continue;
                 }
-
+                theBrotherOfTheDamnGarbageCollector.put(img.hashCode(), img);
                 mv.put(count, img);
                 Log.d("ImageRec", image.getName());
-                empty = false;
+                cc++;
                 int label = Integer.parseInt(image.getName().split("\\-")[0]);
                 if (!map.containsKey(label)) {
                     map.put(label, image.getName().split("\\-")[1]);
@@ -88,9 +71,10 @@ public class ImageRecognition {
                 buf.put(count, label);
                 count++;
             }
-            Log.d("ImageRecognition", "pretrain");
+            theBrotherOfTheDamnGarbageCollector.put(mv.hashCode(), mv);
+            Log.d("ImageRecognition", "pretrain " + count);
 
-            if (!empty) {
+            if (cc >= 2) {
                 recognizer.train(mv, labels);
             }
         }
@@ -134,7 +118,7 @@ public class ImageRecognition {
             Log.d("ImageRecognition", "findend");
             return map.get(buffer);
         } catch (Exception e) {
-            e.printStackTrace();
+            // e.printStackTrace();
         }
         return "random";
     }
