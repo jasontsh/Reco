@@ -214,7 +214,17 @@ public class MainActivity extends AppCompatActivity {
                         float xpw = midPoint.x + eyesDistance * 2;
                         float yph = midPoint.y + eyesDistance * 2;
                         Rect rect = new Rect((int) x, (int) y, (int) xpw, (int) yph);
-                        faceMap.put("" + rect.hashCode(), rect);
+                        Log.d("DRAWING", rect.toString());
+                        Bitmap sub = Bitmap.createBitmap(damnGarbageCollector.get(IMAGE_KEY_RECENT), (int) x, (int) y, (int) (xpw - x), (int) (yph - y));
+                        savePicture("random", sub);
+                        try {
+                            reclock.acquire();
+                        } catch (InterruptedException e) {
+
+                        }
+                        String name = rec.findPersonFromPhoto("random");
+                        reclock.release();
+                        faceMap.put(name, rect);
 
                     }
                     if (System.currentTimeMillis() - faceTimer.get() > 500) {
