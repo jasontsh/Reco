@@ -1,10 +1,16 @@
 package com.jhia.s16.pennapps.carey;
 
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.util.Log;
+
 import static org.bytedeco.javacpp.opencv_core.*;
-import static org.bytedeco.javacpp.opencv_contrib.*;
-import static org.bytedeco.javacpp.opencv_highgui.*;
+import static org.bytedeco.javacpp.opencv_face.*;
+import static org.bytedeco.javacpp.opencv_imgcodecs.*;
 
 import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.nio.IntBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -20,6 +26,10 @@ public class ImageRecognition {
 
     public String dir;
 
+    // multiple of 16
+    public static final int TRAINING_IMAGE_WIDTH = 320;
+    public static final int TRAINING_IMAGE_HEIGHT = 320;
+
     public ImageRecognition (String dir) {
         recognizer = createFisherFaceRecognizer();
         this.dir = dir;
@@ -27,16 +37,40 @@ public class ImageRecognition {
     }
 
     public void init() {
+        Log.d("ImageRecognition", "initstart");
         List<File> images = getListFiles(new File(dir));
         MatVector mv = new MatVector(images.size());
+
         Mat labels = new Mat(images.size(), 1, CV_32SC1);
         boolean empty = true;
         if (labels != null && images.size() > 0) {
             IntBuffer buf = labels.getIntBuffer();
             int count = 0;
             for (File image : images) {
+                Log.d("ImageReco", image.getAbsolutePath());
+                /*if (image == null || !image.getName().endsWith(".png")) {
+                    continue;
+                }
+                Log.d("ImageReco", image.getAbsolutePath());
+                Bitmap bmp = BitmapFactory.decodeFile(image.getAbsolutePath());
+                if (bmp == null) {
+                    continue;
+                }
+                bmp = MainActivity.getResizedBitmap(bmp, TRAINING_IMAGE_WIDTH, TRAINING_IMAGE_HEIGHT);
+                try {
+                    image.delete();
+                    image.createNewFile();
+                    FileOutputStream fout = new FileOutputStream(image);
+                    bmp.copy(Bitmap.Config.RGB_565, true).compress(Bitmap.CompressFormat.PNG, 100, fout);
+                    fout.flush();
+                    fout.close();
+                } catch (IOException e) {
+
+                }
+                */
                 Mat img = imread(image.getAbsolutePath(), CV_LOAD_IMAGE_GRAYSCALE);
                 mv.put(count, img);
+                Log.d("ImageRec", image.getName());
                 if(image.getName().contains("random.png")){
                     continue;
                 }
@@ -48,10 +82,13 @@ public class ImageRecognition {
                 buf.put(count, label);
                 count++;
             }
+            Log.d("ImageRecognition", "pretrain");
+
             if (!empty) {
                 recognizer.train(mv, labels);
             }
         }
+        Log.d("ImageRecognition", "initend");
     }
 
     protected List<File> getListFiles(File parentDir) {
@@ -78,12 +115,15 @@ public class ImageRecognition {
      * @return name of the person
      */
     public String findPersonFromPhoto(String s) {
+        Log.d("ImageRecognition", "findstart");
         Mat img = imread(s, CV_LOAD_IMAGE_GRAYSCALE);
         int buffer = recognizer.predict(img);
         if (buffer <= 0) {
             return null;
         }
+        Log.d("ImageRecognition", "findend");
         return map.get(buffer);
+
     }
 
     public String reparse(String input) {

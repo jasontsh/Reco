@@ -8,9 +8,14 @@ import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.ImageFormat;
+import android.graphics.Matrix;
+import android.graphics.PointF;
 import android.graphics.Rect;
 import android.graphics.YuvImage;
 import android.hardware.Camera;
+import android.media.FaceDetector;
+import android.media.Image;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
@@ -24,6 +29,12 @@ import android.view.View;
 import android.widget.FrameLayout;
 import android.widget.Toast;
 
+import com.google.android.gms.appindexing.Action;
+import com.google.android.gms.appindexing.AppIndex;
+import com.google.android.gms.common.api.GoogleApiClient;
+
+import org.bytedeco.javacpp.opencv_face;
+
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -36,6 +47,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static org.bytedeco.javacpp.opencv_core.*;
 import static org.bytedeco.javacpp.opencv_objdetect.*;
@@ -44,6 +56,7 @@ import static org.bytedeco.javacpp.opencv_objdetect.*;
 /**
  * An example full-screen activity that shows and hides the system UI (i.e.
  * status bar and navigation/system bar) with user interaction.
+ * l'chairmao mao
  */
 public class MainActivity extends AppCompatActivity {
     /**
@@ -69,17 +82,25 @@ public class MainActivity extends AppCompatActivity {
     private Camera.PreviewCallback previewCallback = null;
     private Activity mActivity = this;
 
-    private Bitmap mostRecentImage = null;
+    //private Bitmap mostRecentImage = null;
     private Semaphore semaphore = new Semaphore(1);
     private Semaphore reclock = new Semaphore(1);
     private boolean imageFresh = false;
     private boolean forceImage = false;
+    private boolean faceDetectionSwitch = false;
 
     private ConcurrentHashMap<String, Rect> faceMap = new ConcurrentHashMap<>();
+    private AtomicLong faceTimer = new AtomicLong(0);
+    /**
+     * ATTENTION: This was auto-generated to implement the App Indexing API.
+     * See https://g.co/AppIndexing/AndroidStudio for more information.
+     */
+    private GoogleApiClient client;
 
 
     private final void savePicture(String fileName, Bitmap img) {
         try {
+            img = getResizedBitmap(img, ImageRecognition.TRAINING_IMAGE_WIDTH, ImageRecognition.TRAINING_IMAGE_HEIGHT);
             String directoryName = basePictureDir;
             File directory = new File(directoryName);
             directory.mkdirs();
@@ -147,56 +168,107 @@ public class MainActivity extends AppCompatActivity {
                 if (time == 0) {
                     time = System.currentTimeMillis();
                 }
+                //if (System.currentTimeMillis() - faceTimer.get() > 500) {
+                //faceMap.clear();
+                // } else {
                 Camera.Size previewSize = mCamera.getParameters().getPreviewSize();
                 ByteArrayOutputStream out = new ByteArrayOutputStream();
                 YuvImage yuvImg =
                         new YuvImage(data, ImageFormat.NV21, previewSize.width, previewSize.height, null);
                 yuvImg.compressToJpeg(new Rect(0, 0, previewSize.width, previewSize.height), 50, out);
                 byte[] imageBytes = out.toByteArray();
+                //if (mostRecentImage != null && !mostRecentImage.isRecycled())
+                //    mostRecentImage.recycle();
                 Bitmap image = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length);
                 if (image == null) {
                     System.out.println("NULL IMAGE PREVIEW");
                 } else {
                     if (System.currentTimeMillis() - time > PICTURE_DELAY) {
                         savePicture("random", image);
+                        time = System.currentTimeMillis();
                     }
-
+                    ++counter;
                     try {
                         semaphore.acquire();
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     }
-                    if (++counter > 50 || forceImage) {
+                    //Bitmap.createBitmap(mCameraView.getDrawingCache());
+                    //mostRecentImage = image.copy(Bitmap.Config.RGB_565, true);
+                    if (counter > 30 || forceImage) {
                         counter = 0;
                         System.out.println("IMAGE SET");
-                        mostRecentImage = image;
+
                         imageFresh = true;
                         forceImage = false;
+                    }
+                    int maxFaces = 4;
 
-                        // savePicture("random", image);
-                        // rec.findPersonFromPhoto(basePictureDir + "/random.png");
-                        faceMap.clear();
-                        try {
-                            if (reclock.tryAcquire(100, TimeUnit.MILLISECONDS)) {
-                                ArrayList<Rect> faceBoxes = facepos(image);
-                                for (Rect face : faceBoxes) {
-                                    Bitmap cropped = Bitmap.createBitmap(image, face.left, face.top, face
-                                            .width(), face.height());
-                                    savePicture("faceread", image);
-                                    String name = rec.findPersonFromPhoto(
-                                            basePictureDir + "/faceread.png");
-                                    faceMap.put(name, face);
-                                }
-                                reclock.release();
-                            }
-                        } catch (InterruptedException e) {
-                            e.printStackTrace();
+                    FaceDetector.Face[] faces = new FaceDetector.Face[maxFaces];
+                    FaceDetector fd = new FaceDetector(image.getWidth(), image.getHeight(), maxFaces);
+                    int faceCount = fd.findFaces(image, faces);
+                    if (faceCount > 0) {
+                        faceTimer.set(System.currentTimeMillis());
+                    }
+                    Log.d("FACE DELETEC", "detectedface " + faceCount);
+                    for (FaceDetector.Face f : faces) {
+                        if (f == null) {
+                            continue;
                         }
+                        PointF midPoint = new PointF();
+                        f.getMidPoint(midPoint);
+                        float eyesDistance = f.eyesDistance();
+                        float x = midPoint.x - eyesDistance * 2;
+                        float y = midPoint.y - eyesDistance * 2;
+                        float xpw = midPoint.x + eyesDistance * 2;
+                        float yph = midPoint.y + eyesDistance * 2;
+                        Rect rect = new Rect((int) x, (int) y, (int) xpw, (int) yph);
+                        faceMap.put("" + rect.hashCode(), rect);
+                    }
+                    if (System.currentTimeMillis() - faceTimer.get() > 500) {
+                        faceMap.clear();
                     }
                     semaphore.release();
                 }
+
             }
+            //}
         };
+
+
+        mCamera.setFaceDetectionListener(new Camera.FaceDetectionListener() {
+            @Override
+            public void onFaceDetection(Camera.Face[] faces, Camera camera) {
+
+                Log.d("face deted", "l'l'aomaokai");
+                faceTimer.set(System.currentTimeMillis());
+                Bitmap image = sudoGetMostRecentImage();
+                if (image != null) {
+                    for (Camera.Face face : faces) {
+                        if (face.score < 50) {
+                            continue;
+                        }
+                        Bitmap faceBMP = Bitmap.createBitmap(image, face.rect.left, face.rect.top, face.rect.width(), face.rect.height());
+
+                        faceBMP = MainActivity.getResizedBitmap(faceBMP, ImageRecognition.TRAINING_IMAGE_WIDTH, ImageRecognition.TRAINING_IMAGE_HEIGHT);
+
+                        // processing
+
+                        savePicture("random", faceBMP);
+                        try {
+                            reclock.acquire();
+                        } catch (InterruptedException e) {
+
+                        }
+                        person = rec.findPersonFromPhoto("random");
+
+                        faceMap.put(person, face.rect);
+                        reclock.release();
+                    }
+                }
+            }
+        });
+
         CameraHandler handler = new CameraHandler();
         mCameraView = new CameraView(this, this, mCamera, handler);
         FrameLayout preview = (FrameLayout) findViewById(R.id.framelayout);
@@ -212,6 +284,34 @@ public class MainActivity extends AppCompatActivity {
         });
 
         pressed = false;
+        // ATTENTION: This was auto-generated to implement the App Indexing API.
+        // See https://g.co/AppIndexing/AndroidStudio for more information.
+        client = new GoogleApiClient.Builder(this).addApi(AppIndex.API).build();
+    }
+
+    /**
+     * Credit goes to http://stackoverflow.com/users/884674/jeet-chanchawat
+     *
+     * @param bm
+     * @param newWidth
+     * @param newHeight
+     * @return
+     */
+    public static Bitmap getResizedBitmap(Bitmap bm, int newWidth, int newHeight) {
+        int width = bm.getWidth();
+        int height = bm.getHeight();
+        float scaleWidth = ((float) newWidth) / width;
+        float scaleHeight = ((float) newHeight) / height;
+        // CREATE A MATRIX FOR THE MANIPULATION
+        Matrix matrix = new Matrix();
+        // RESIZE THE BIT MAP
+        matrix.postScale(scaleWidth, scaleHeight);
+
+        // "RECREATE" THE NEW BITMAP
+        Bitmap resizedBitmap = Bitmap.createBitmap(
+                bm, 0, 0, width, height, matrix, false);
+        bm.recycle();
+        return resizedBitmap;
     }
 
     public Bitmap getMostRecentImage() {
@@ -221,7 +321,7 @@ public class MainActivity extends AppCompatActivity {
             e.printStackTrace();
         }
         imageFresh = false;
-        Bitmap mostRecent = mostRecentImage;
+        Bitmap mostRecent = /*mostRecentImage;*/ null;
         semaphore.release();
         return mostRecent;
     }
@@ -343,8 +443,14 @@ public class MainActivity extends AppCompatActivity {
     public void addPerson(String name) {
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mActivity);
         int nextId = sp.getInt("people_count", 0) + 1;
-        savePicture(nextId + "-" + name + "1.png", getMostRecentImage());
-        savePicture(nextId + "-" + name + "2.png", sudoGetMostRecentImage());
+        Bitmap p1 = getMostRecentImage();
+        if (p1 != null) {
+            savePicture(nextId + "-" + name + "1", p1);
+        }
+        p1 = sudoGetMostRecentImage();
+        if (p1 != null) {
+            savePicture(nextId + "-" + name + "2", p1);
+        }
         SharedPreferences.Editor editor = sp.edit();
         editor.putInt("people_count", nextId).apply();
         person = name;
@@ -355,13 +461,13 @@ public class MainActivity extends AppCompatActivity {
     public void change(String note) {
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mActivity);
         if (person == null) {
-            savePicture("temp.png", getMostRecentImage());
+            savePicture("temp", getMostRecentImage());
             try {
                 reclock.acquire();
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
-            person = rec.findPersonFromPhoto(basePictureDir + "/temp.png");
+            person = rec.findPersonFromPhoto(basePictureDir + "/temp");
             reclock.release();
         }
         if (person != null) {
@@ -378,13 +484,13 @@ public class MainActivity extends AppCompatActivity {
 
     public void note(String note) {
         if (person == null) {
-            savePicture("temp.png", getMostRecentImage());
+            savePicture("temp", getMostRecentImage());
             try {
                 reclock.acquire();
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
-            person = rec.findPersonFromPhoto(basePictureDir + "/temp.png");
+            person = rec.findPersonFromPhoto(basePictureDir + "/temp");
             reclock.release();
         }
         if (person != null) {
@@ -398,13 +504,13 @@ public class MainActivity extends AppCompatActivity {
 
     public void delete(String note) {
         if (person == null) {
-            savePicture("temp.png", getMostRecentImage());
+            savePicture("temp", getMostRecentImage());
             try {
                 reclock.acquire();
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
-            person = rec.findPersonFromPhoto(basePictureDir + "/temp.png");
+            person = rec.findPersonFromPhoto(basePictureDir + "/temp");
             reclock.release();
         }
         if (person != null) {
@@ -421,10 +527,11 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public ArrayList<Rect> facepos(Bitmap bm) {
+        /*
         IplImage image = IplImage.create(bm.getWidth(), bm.getHeight(), IPL_DEPTH_8U, 4);
         bm.copyPixelsToBuffer(image.getByteBuffer());
         ArrayList<Rect> answer = new ArrayList<>();
-        CvHaarClassifierCascade cascade = new CvHaarClassifierCascade();
+        CvHaarClassifierCascade cascade = new CvHaarClassifierCascade(cvLoad("haarcascade_frontalface_default.xml"));
         CvMemStorage storage = CvMemStorage.create();
         CvSeq sign = cvHaarDetectObjects(image, cascade, storage, 1.5, 3, CV_HAAR_DO_CANNY_PRUNING);
 
@@ -436,7 +543,8 @@ public class MainActivity extends AppCompatActivity {
             CvRect r = new CvRect(cvGetSeqElem(sign, i));
             answer.add(new Rect(r.x(), r.y(), r.width() + r.x(), r.y() + r.height()));
         }
-        return answer;
+        return answer;*/
+        return new ArrayList<Rect>();
     }
 
     /**
@@ -469,5 +577,45 @@ public class MainActivity extends AppCompatActivity {
                 return 10;
         }
         return -1;
+    }
+
+    @Override
+    public void onStart() {
+        super.onStart();
+
+        // ATTENTION: This was auto-generated to implement the App Indexing API.
+        // See https://g.co/AppIndexing/AndroidStudio for more information.
+        client.connect();
+        Action viewAction = Action.newAction(
+                Action.TYPE_VIEW, // TODO: choose an action type.
+                "Main Page", // TODO: Define a title for the content shown.
+                // TODO: If you have web page content that matches this app activity's content,
+                // make sure this auto-generated web page URL is correct.
+                // Otherwise, set the URL to null.
+                Uri.parse("http://host/path"),
+                // TODO: Make sure this auto-generated app deep link URI is correct.
+                Uri.parse("android-app://com.jhia.s16.pennapps.carey/http/host/path")
+        );
+        AppIndex.AppIndexApi.start(client, viewAction);
+    }
+
+    @Override
+    public void onStop() {
+        super.onStop();
+
+        // ATTENTION: This was auto-generated to implement the App Indexing API.
+        // See https://g.co/AppIndexing/AndroidStudio for more information.
+        Action viewAction = Action.newAction(
+                Action.TYPE_VIEW, // TODO: choose an action type.
+                "Main Page", // TODO: Define a title for the content shown.
+                // TODO: If you have web page content that matches this app activity's content,
+                // make sure this auto-generated web page URL is correct.
+                // Otherwise, set the URL to null.
+                Uri.parse("http://host/path"),
+                // TODO: Make sure this auto-generated app deep link URI is correct.
+                Uri.parse("android-app://com.jhia.s16.pennapps.carey/http/host/path")
+        );
+        AppIndex.AppIndexApi.end(client, viewAction);
+        client.disconnect();
     }
 }

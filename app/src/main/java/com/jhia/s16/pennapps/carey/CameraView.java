@@ -46,6 +46,7 @@ public class CameraView extends SurfaceView implements SurfaceHolder.Callback, R
         mHolder.addCallback(this);
         mHolder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
         handler = new CameraHandler();
+
     }
 
     @Override
@@ -89,6 +90,7 @@ public class CameraView extends SurfaceView implements SurfaceHolder.Callback, R
         textPaint.setColor(0xFFFFFFFF);
         textPaint.setTextSize(40);
         // cv.drawText(ia.getStateString(), 50, 50, textPaint);
+        this.setDrawingCacheEnabled(true);
         invalidate();
     }
 
