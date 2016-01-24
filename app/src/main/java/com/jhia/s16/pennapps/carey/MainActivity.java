@@ -230,11 +230,22 @@ public class MainActivity extends AppCompatActivity {
                     if (System.currentTimeMillis() - faceTimer.get() > 500) {
                         faceMap.clear();
                     }
+                    try {
+                        reclock.acquire();
+                    } catch (InterruptedException e) {
+
+                    }
                     person = rec.findPersonFromPhoto("random");
+<<<<<<< HEAD
                     if (person != null) {
                         notes = new ArrayList<>(PreferenceManager.getDefaultSharedPreferences(mActivity).getStringSet(person, new HashSet<String>()));
                     }
                    semaphore.release();
+=======
+                    reclock.release();
+                    notes = new ArrayList<>(PreferenceManager.getDefaultSharedPreferences(mActivity).getStringSet(person, new HashSet<String>()));
+                    semaphore.release();
+>>>>>>> 3bd6adcfe8a9d3edaf9e82cdaa00678b815d39cf
                 }
 
             }
