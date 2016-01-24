@@ -9,8 +9,6 @@ import static org.bytedeco.javacpp.opencv_face.*;
 import static org.bytedeco.javacpp.opencv_imgcodecs.*;
 
 import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
 import java.nio.IntBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -23,6 +21,7 @@ public class ImageRecognition {
 
     private FaceRecognizer recognizer;
     private HashMap<Integer, String> map;
+    private boolean inited;
 
     public String dir;
 
@@ -34,9 +33,11 @@ public class ImageRecognition {
         recognizer = createFisherFaceRecognizer();
         this.dir = dir;
         map = new HashMap<>();
+        inited = false;
     }
 
     public void init() {
+        inited = true;
         Log.d("ImageRecognition", "initstart");
         List<File> images = getListFiles(new File(dir));
         MatVector mv = new MatVector(images.size());
@@ -68,12 +69,17 @@ public class ImageRecognition {
 
                 }
                 */
-                Mat img = imread(image.getAbsolutePath(), CV_LOAD_IMAGE_GRAYSCALE);
-                mv.put(count, img);
-                Log.d("ImageRec", image.getName());
                 if(image.getName().contains("random.png")){
                     continue;
                 }
+
+                Mat img = imread(image.getAbsolutePath(), CV_LOAD_IMAGE_GRAYSCALE);
+                if (img == null || img.total() == 0 || img.empty()) {
+                    continue;
+                }
+
+                mv.put(count, img);
+                Log.d("ImageRec", image.getName());
                 empty = false;
                 int label = Integer.parseInt(image.getName().split("\\-")[0]);
                 if (!map.containsKey(label)) {
@@ -115,15 +121,22 @@ public class ImageRecognition {
      * @return name of the person
      */
     public String findPersonFromPhoto(String s) {
-        Log.d("ImageRecognition", "findstart");
-        Mat img = imread(s, CV_LOAD_IMAGE_GRAYSCALE);
-        int buffer = recognizer.predict(img);
-        if (buffer <= 0) {
-            return null;
+        try {
+            if (!inited) {
+                return null;
+            }
+            Log.d("ImageRecognition", "findstart");
+            Mat img = imread(s, CV_LOAD_IMAGE_GRAYSCALE);
+            int buffer = recognizer.predict(img);
+            if (buffer <= 0) {
+                return null;
+            }
+            Log.d("ImageRecognition", "findend");
+            return map.get(buffer);
+        } catch (Exception e) {
+            e.printStackTrace();
         }
-        Log.d("ImageRecognition", "findend");
-        return map.get(buffer);
-
+        return "random";
     }
 
     public String reparse(String input) {

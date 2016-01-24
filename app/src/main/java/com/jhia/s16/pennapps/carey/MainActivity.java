@@ -231,7 +231,9 @@ public class MainActivity extends AppCompatActivity {
                         faceMap.clear();
                     }
                     person = rec.findPersonFromPhoto("random");
-                    notes = new ArrayList<>(PreferenceManager.getDefaultSharedPreferences(mActivity).getStringSet(person, new HashSet<String>()));
+                    if (person != null) {
+                        notes = new ArrayList<>(PreferenceManager.getDefaultSharedPreferences(mActivity).getStringSet(person, new HashSet<String>()));
+                    }
                    semaphore.release();
                 }
 
