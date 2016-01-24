@@ -215,17 +215,17 @@ public class MainActivity extends AppCompatActivity {
                         float yph = midPoint.y + eyesDistance * 2;
                         Rect rect = new Rect((int) x, (int) y, (int) xpw, (int) yph);
                         faceMap.put("" + rect.hashCode(), rect);
+
                     }
                     if (System.currentTimeMillis() - faceTimer.get() > 500) {
                         faceMap.clear();
                     }
-
-
+                    person = rec.findPersonFromPhoto("random");
+                    notes = new ArrayList<>(PreferenceManager.getDefaultSharedPreferences(mActivity).getStringSet(person, new HashSet<String>()));
                    semaphore.release();
                 }
 
             }
-            //}
         };
 
         CameraHandler handler = new CameraHandler();
